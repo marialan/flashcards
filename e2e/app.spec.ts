@@ -32,6 +32,7 @@ test('serves the built app', async ({ page }) => {
 
 test('fits the card shell at the specified viewport sizes', async ({ page }) => {
   await page.goto('/')
+  await expect(page.getByRole('alert')).toBeVisible()
   await page.evaluate(() => {
     const main = document.querySelector('main')
     const heading = main?.querySelector('h1')
@@ -39,6 +40,14 @@ test('fits the card shell at the specified viewport sizes', async ({ page }) => 
 
     const card = document.createElement('div')
     card.className = 'card-box'
+    for (const [width, height] of [[100, 200], [200, 100]]) {
+      const image = document.createElement('img')
+      image.className = 'card-image'
+      image.alt = 'Picture card'
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="#31584e"/></svg>`
+      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+      card.append(image)
+    }
     const status = document.createElement('p')
     status.className = 'load-status'
     status.textContent = '3 cards ready.'
@@ -55,7 +64,10 @@ test('fits the card shell at the specified viewport sizes', async ({ page }) => 
     const layout = await page.evaluate(() => {
       const main = document.querySelector('main')
       const card = document.querySelector('.card-box')
-      if (!main || !card) throw new Error('The card shell is unavailable.')
+      const images = document.querySelectorAll<HTMLImageElement>('.card-image')
+      if (!main || !card || images.length !== 2) {
+        throw new Error('The card shell is unavailable.')
+      }
 
       const mainRect = main.getBoundingClientRect()
       const cardRect = card.getBoundingClientRect()
@@ -63,6 +75,11 @@ test('fits the card shell at the specified viewport sizes', async ({ page }) => 
         viewportWidth: window.innerWidth,
         viewportHeight: window.innerHeight,
         documentWidth: document.documentElement.scrollWidth,
+        images: Array.from(images, (image) => ({
+          naturalWidth: image.naturalWidth,
+          naturalHeight: image.naturalHeight,
+          objectFit: getComputedStyle(image).objectFit,
+        })),
         mainTop: mainRect.top,
         mainBottom: mainRect.bottom,
         cardLeft: cardRect.left,
@@ -74,6 +91,10 @@ test('fits the card shell at the specified viewport sizes', async ({ page }) => 
     })
 
     expect(layout.documentWidth).toBeLessThanOrEqual(viewport.width)
+    expect(layout.images).toEqual([
+      { naturalWidth: 100, naturalHeight: 200, objectFit: 'contain' },
+      { naturalWidth: 200, naturalHeight: 100, objectFit: 'contain' },
+    ])
     expect(layout.mainTop).toBeGreaterThanOrEqual(0)
     expect(layout.mainBottom).toBeLessThanOrEqual(viewport.height)
     expect(layout.cardLeft).toBeGreaterThanOrEqual(0)

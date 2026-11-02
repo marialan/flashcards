@@ -9,8 +9,16 @@ interface AppProps {
 
 type LoadState =
   | { status: 'loading' }
-  | { status: 'ready'; result: LoadedDeck }
+  | { status: 'ready'; result: LoadedDeck; imageAvailable: boolean }
   | { status: 'unavailable' }
+
+function reportImageFailure(result: LoadedDeck) {
+  console.error('Flashcard image unavailable.', {
+    category: 'image',
+    cardId: result.initialCard.card_id,
+    asset: result.initialCard.image,
+  })
+}
 
 function App({ deckUrl, language }: AppProps = {}) {
   const [attempt, setAttempt] = useState(0)
@@ -32,7 +40,14 @@ function App({ deckUrl, language }: AppProps = {}) {
 
     void loadDeck(deckUrl, language, { signal: controller.signal })
       .then((result) => {
-        if (active) setState({ status: 'ready', result })
+        if (!active) return
+
+        if (!result.initialImageAvailable) reportImageFailure(result)
+        setState({
+          status: 'ready',
+          result,
+          imageAvailable: result.initialImageAvailable,
+        })
       })
       .catch((error: unknown) => {
         if (!active || controller.signal.aborted) return
@@ -70,11 +85,30 @@ function App({ deckUrl, language }: AppProps = {}) {
       )}
       {state.status === 'ready' && (
         <>
-          <div className="card-box" aria-hidden="true" />
+          <div className="card-box">
+            {state.imageAvailable ? (
+              <img
+                className="card-image"
+                src={new URL(state.result.initialCard.image, document.baseURI).href}
+                alt="Picture card"
+                onError={() => {
+                  reportImageFailure(state.result)
+                  setState((current) =>
+                    current.status === 'ready'
+                      ? { ...current, imageAvailable: false }
+                      : current,
+                  )
+                }}
+              />
+            ) : (
+              <div className="image-unavailable" role="status">
+                <span className="unavailable-icon" aria-hidden="true">!</span>
+                <span>Image unavailable</span>
+              </div>
+            )}
+          </div>
           <p className="load-status" role="status">
-            {state.result.initialImageAvailable
-              ? `${state.result.deck.cards.length} cards ready.`
-              : `${state.result.deck.cards.length} cards ready; the first image is unavailable.`}
+            {state.result.deck.cards.length} cards ready.
           </p>
         </>
       )}

@@ -22,6 +22,7 @@ export class DeckLoadError extends Error {
 
 export interface LoadedDeck {
   deck: FlashcardDeck
+  initialCard: FlashcardDeck['cards'][number]
   initialImageAvailable: boolean
 }
 
@@ -225,5 +226,5 @@ export async function loadDeck(
     }
   }
 
-  return { deck, initialImageAvailable }
+  return { deck, initialCard: firstCard, initialImageAvailable }
 }
