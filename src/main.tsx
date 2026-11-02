@@ -11,6 +11,9 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App />
+    <App
+      deckUrl={import.meta.env.DEV ? './lang/english/deck.json' : undefined}
+      language={import.meta.env.DEV ? 'english' : undefined}
+    />
   </StrictMode>,
 )

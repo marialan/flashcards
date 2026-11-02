@@ -16,6 +16,72 @@ test('serves the built app', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Flashcards', level: 1 })).toBeVisible()
   await expect(page.getByRole('alert')).toContainText('Content is unavailable for this launch.')
   expect(externalRequests).toEqual([])
+
+  await page.keyboard.press('Tab')
+  const retryButton = page.getByRole('button', { name: 'Retry' })
+  await expect(retryButton).toBeFocused()
+  await expect
+    .poll(() =>
+      retryButton.evaluate((button) => {
+        const style = getComputedStyle(button)
+        return [style.outlineStyle, style.outlineWidth]
+      }),
+    )
+    .toEqual(['solid', '3px'])
+})
+
+test('fits the card shell at the specified viewport sizes', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => {
+    const main = document.querySelector('main')
+    const heading = main?.querySelector('h1')
+    if (!main || !heading) throw new Error('The activity shell is unavailable.')
+
+    const card = document.createElement('div')
+    card.className = 'card-box'
+    const status = document.createElement('p')
+    status.className = 'load-status'
+    status.textContent = '3 cards ready.'
+    main.replaceChildren(heading, card, status)
+  })
+
+  for (const viewport of [
+    { width: 320, height: 568 },
+    { width: 568, height: 320 },
+    { width: 768, height: 1024 },
+    { width: 1024, height: 768 },
+  ]) {
+    await page.setViewportSize(viewport)
+    const layout = await page.evaluate(() => {
+      const main = document.querySelector('main')
+      const card = document.querySelector('.card-box')
+      if (!main || !card) throw new Error('The card shell is unavailable.')
+
+      const mainRect = main.getBoundingClientRect()
+      const cardRect = card.getBoundingClientRect()
+      return {
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        documentWidth: document.documentElement.scrollWidth,
+        mainTop: mainRect.top,
+        mainBottom: mainRect.bottom,
+        cardLeft: cardRect.left,
+        cardRight: cardRect.right,
+        cardTop: cardRect.top,
+        cardBottom: cardRect.bottom,
+        cardCenterX: cardRect.left + cardRect.width / 2,
+      }
+    })
+
+    expect(layout.documentWidth).toBeLessThanOrEqual(viewport.width)
+    expect(layout.mainTop).toBeGreaterThanOrEqual(0)
+    expect(layout.mainBottom).toBeLessThanOrEqual(viewport.height)
+    expect(layout.cardLeft).toBeGreaterThanOrEqual(0)
+    expect(layout.cardRight).toBeLessThanOrEqual(viewport.width)
+    expect(layout.cardTop).toBeGreaterThanOrEqual(0)
+    expect(layout.cardBottom).toBeLessThanOrEqual(viewport.height)
+    expect(layout.cardCenterX).toBeCloseTo(viewport.width / 2, 0)
+  }
 })
 
 test('rejects a deck redirect without requesting its destination', async ({ page }) => {

@@ -3,8 +3,8 @@
 | | |
 | --- | --- |
 | **Title** | Flashcards - User Interface Specification |
-| **Status** | Approved - version 0.1.5; open presentation and release decisions remain recorded |
-| **Version** | 0.1.5 |
+| **Status** | Approved - version 0.1.6; open presentation and release decisions remain recorded |
+| **Version** | 0.1.6 |
 | **Last updated** | 2026-11-02 |
 | **Owner/Author** | Maria Lande (with Copilot) |
 
@@ -151,8 +151,10 @@ against adjacent colors. Provide a visible keyboard focus ring not clipped
 by the carousel. Do not rely on color, sound, or swipe alone to communicate
 an available action or failure.
 
-Final palette and illustrations require review; no third-party remote fonts,
-icons, or imagery may be loaded at runtime.
+The selected visual direction is playful soft: gentle, child-friendly colors
+and rounded details while retaining the rectangular bordered card. Review the
+exact palette and illustrations against the contrast targets before release;
+no third-party remote fonts, icons, or imagery may be loaded at runtime.
 
 ### UI-008 - Transitions and reduced motion
 
@@ -238,10 +240,10 @@ Then the first card is shown on its image side under DEC-002
 
 ## 6. Approval and unresolved presentation questions
 
-The accessibility/layout values are approved. Select the final visual direction
-before UI implementation. Resolve launch-language typography/direction and
-chrome copy before content acceptance. Confirm actual device/WebView coverage
-and learner usability protocol before claiming PRD-004 is met.
+The accessibility/layout values and playful-soft visual direction are
+approved. Resolve launch-language typography/direction and chrome copy before
+content acceptance. Confirm actual device/WebView coverage and learner
+usability protocol before claiming PRD-004 is met.
 Revisit image-first navigation with Maria Lande; it remains provisional under
 DEC-002. Verify localStorage restoration across reload and app restart in the
 target WebViews. Do not add a visible completion concept to solve the still-open
@@ -249,6 +251,7 @@ reporting milestone.
 
 ## Change Log
 
+2026-11-02 — Maria Lande (with Copilot) — Selected the playful-soft visual direction while retaining the approved accessibility and card-boundary targets.
 2026-11-02 — Maria Lande (with Copilot) — Split small-deck and progress-restoration UI acceptance into separate scenarios.
 2026-11-02 — Maria Lande (with Copilot) — Updated UI acceptance to restore the last viewed card and face across reloads and app restarts.
 2026-10-28 — Maria Lande (with Copilot) — Created the initial UI-specification draft with PRD and behavior traceability, interface states, accessibility targets, and observable acceptance scenarios.

@@ -3,8 +3,8 @@
 | | |
 | --- | --- |
 | **Title** | Flashcards - Development Specification |
-| **Status** | Approved - version 0.1.6; provisional decisions and integration blockers remain recorded |
-| **Version** | 0.1.6 |
+| **Status** | Approved - version 0.2.0; provisional decisions and integration blockers remain recorded |
+| **Version** | 0.2.0 |
 | **Last updated** | 2026-11-02 |
 | **Owner/Author** | Maria Lande (with Copilot) |
 
@@ -161,6 +161,13 @@ without requesting an arbitrary directory or substituting another language.
 If Layout B is approved, specify and validate `cr_book` and core lookup before
 implementing it. Do not invent learner identifiers; missing `cr_user_id` is
 represented by `""` for the bridge contract.
+
+For local development only (`npm run dev`), launch the English test fixture at
+`./lang/english/deck.json` without requiring container query parameters. This
+explicit development context does not select production content, approve a
+launch language, or resolve DEC-007. Production builds, including built
+previews, retain the unavailable state until production lookup is implemented;
+they must not fall back to the development fixture.
 
 ### DEV-004 - Offline loader and lifecycle (PRD-005)
 
@@ -325,6 +332,7 @@ acceptance together; do not silently change them in code.
 
 ## Change Log
 
+2026-11-02 — Maria Lande (with Copilot) — Approved automatic English fixture loading for local development only while preserving production launch selection and integration blockers.
 2026-11-02 — Maria Lande (with Copilot) — Replaced the no-persistence decision with per-user localStorage restoration across reloads and app restarts.
 2026-10-28 — Maria Lande (with Copilot) — Clarified that the complete target is delivered incrementally, with the single-card MVP preceding navigation and carousel work.
 2026-10-28 — Maria Lande (with Copilot) — Created the initial development-specification draft with PRD traceability, selected interactions, provisional state policies, and explicit integration blockers.

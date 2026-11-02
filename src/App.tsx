@@ -69,11 +69,14 @@ function App({ deckUrl, language }: AppProps = {}) {
         </section>
       )}
       {state.status === 'ready' && (
-        <p className="load-status" role="status">
-          {state.result.initialImageAvailable
-            ? `${state.result.deck.cards.length} cards ready.`
-            : `${state.result.deck.cards.length} cards ready; the first image is unavailable.`}
-        </p>
+        <>
+          <div className="card-box" aria-hidden="true" />
+          <p className="load-status" role="status">
+            {state.result.initialImageAvailable
+              ? `${state.result.deck.cards.length} cards ready.`
+              : `${state.result.deck.cards.length} cards ready; the first image is unavailable.`}
+          </p>
+        </>
       )}
     </main>
   )

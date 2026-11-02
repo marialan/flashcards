@@ -70,8 +70,41 @@ describe('App', () => {
     const { unmount } = render(<App deckUrl="/deck.json" language="english" />)
 
     expect(await screen.findByRole('status')).toHaveTextContent('Loading cards…')
+    expect(document.querySelector('.card-box')).not.toBeInTheDocument()
     unmount()
 
     expect(requestSignal?.aborted).toBe(true)
+  })
+
+  it('shows the card box only after a deck is ready', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          schema_version: 1,
+          language: 'english',
+          cards: [{
+            card_id: 'sat',
+            target_word: 'sat',
+            image: 'lang/english/images/sat.png',
+            audio: 'lang/english/audios/sat.mp3',
+          }],
+          card_order: ['sat'],
+        }),
+    }))
+    vi.stubGlobal('Image', class {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      set src(value: string) {
+        if (value) queueMicrotask(() => this.onload?.())
+      }
+    })
+
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+
+    expect(await screen.findByText('1 cards ready.')).toBeVisible()
+    expect(document.querySelector('.card-box')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Flashcards', level: 1 })).toBeVisible()
   })
 })

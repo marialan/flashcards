@@ -1,19 +1,35 @@
 main {
   box-sizing: border-box;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   min-height: 100vh;
   min-height: 100svh;
+  gap: clamp(0.5rem, 2svh, 0.875rem);
   padding:
     max(1rem, env(safe-area-inset-top))
     max(1rem, env(safe-area-inset-right))
     max(1rem, env(safe-area-inset-bottom))
     max(1rem, env(safe-area-inset-left));
-  place-items: center;
+  text-align: center;
 }
 
 h1 {
   margin: 0;
-  font-size: clamp(2rem, 8vw, 3rem);
+  font-size: clamp(2rem, 7vw, 3rem);
+  line-height: 1.05;
+}
+
+.card-box {
+  box-sizing: border-box;
+  width: min(100%, 32rem);
+  height: min(55svh, 25rem);
+  min-height: 9rem;
+  border: 3px solid #31584e;
+  border-radius: 1.5rem;
+  background: #fffefa;
+  box-shadow: 0 0.5rem 1.5rem rgb(50 70 60 / 12%);
 }
 
 .load-status,
@@ -21,7 +37,7 @@ h1 {
   display: grid;
   justify-items: center;
   gap: 1rem;
-  margin: 1.5rem 0 0;
+  margin: 0;
   text-align: center;
 }
 

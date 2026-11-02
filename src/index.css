@@ -4,12 +4,17 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #242424;
-  background: #fff;
+  color: #263c36;
+  background: #fff8e9;
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+}
+
+:focus-visible {
+  outline: 3px solid #174c43;
+  outline-offset: 3px;
 }
