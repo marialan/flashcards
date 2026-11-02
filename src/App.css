@@ -15,3 +15,53 @@ h1 {
   margin: 0;
   font-size: clamp(2rem, 8vw, 3rem);
 }
+
+.load-status,
+.load-error {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0 0;
+  text-align: center;
+}
+
+.loading-indicator {
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 0.2rem solid #d5d5d5;
+  border-top-color: #242424;
+  border-radius: 50%;
+  animation: loading-spin 1s linear infinite;
+}
+
+.unavailable-icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  font-weight: 700;
+}
+
+.load-error p {
+  margin: 0;
+}
+
+.load-error button {
+  min-width: 7rem;
+  min-height: 2.75rem;
+  font: inherit;
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-indicator {
+    animation: none;
+  }
+}
