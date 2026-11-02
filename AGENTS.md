@@ -48,25 +48,25 @@ Curious Reader delivery follows the third-party game contract: a self-contained,
 
 For every implementation, bug fix, refactor, dependency, build, data, test, or UI task in this repository, read and use these documents before making a plan:
 
-1. `docs/PRD.md` for product goals and scope.
-2. `docs/DEVSPEC.md` for authoritative system behavior and architecture.
-3. `docs/UISPEC.md` for user-facing layout, state, and accessibility requirements.
-4. `docs/TESTSPEC.md` for required verification.
-
-These are stored under `docs/specs`.
+1. `docs/specs/PRD.md` for product goals and scope.
+2. `docs/specs/DEVSPEC.md` for authoritative system behavior and architecture.
+3. `docs/specs/UISPEC.md` for user-facing layout, state, and accessibility requirements.
+4. `docs/specs/TESTSPEC.md` for required verification.
 
 When specifications and code differ, do not silently choose code. Identify the discrepancy, propose the required spec or code change, and get approval before intentionally changing behavior.
 
 ## Required Task Workflow
 
 1. Before coding, create a task plan that names the relevant requirement IDs or sections in the four specifications and defines the validation method from `TESTSPEC.md`.
-2. Implement only behavior covered by approved specs. For new behavior, update the appropriate specs before implementation or explicitly obtain approval to do so as part of the task.
-3. Run the required automated and manual checks from `TESTSPEC.md`.
-4. After a task is complete, tested, and human-approved, create and complete a separate **Spec Update** task before beginning unrelated work.
+2. Implement behavior covered by approved specs. If the requested implementation would add to, contradict, or differ from the specs, explain the discrepancy and proposed change and obtain explicit approval before implementation. Update affected specs to reflect the approved change.
+3. Run the required automated and manual checks from `docs/specs/TESTSPEC.md` and report results in the task response.
+4. Do not update specs merely because an implementation step is completed, tested, or human-approved. Specs define requirements, not implementation progress or execution logs. Do not update the implementation plan unless requested.
 
-## Spec Update Task
+## When a Spec Update Is Necessary
 
-For every affected spec, the task must:
+Update specs only for an approved requirements/behavior change or a necessary, approved clarification or correction. Routine implementation of existing requirements does not require a separate Spec Update task.
+
+When a spec update is necessary, for every affected spec:
 
 1. Update `Status`.
 2. Update `Last updated` to the current date in `YYYY-MM-DD` format.

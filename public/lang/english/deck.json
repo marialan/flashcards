@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "language": "english",
+  "cards": [
+    {
+      "card_id": "sat",
+      "target_word": "sat",
+      "image": "lang/english/images/sat.png",
+      "audio": "lang/english/audios/sat.mp3"
+    },
+    {
+      "card_id": "mat",
+      "target_word": "mat",
+      "image": "lang/english/images/mat.png",
+      "audio": "lang/english/audios/mat.mp3"
+    },
+    {
+      "card_id": "cat",
+      "target_word": "cat",
+      "image": "lang/english/images/cat.png",
+      "audio": "lang/english/audios/cat.mp3"
+    }
+  ],
+  "card_order": ["sat", "mat", "cat"]
+}

@@ -1,6 +1,7 @@
 import { access, readdir, readFile } from 'node:fs/promises'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { auditDeckAssets } from './audit-deck-assets.mjs'
 
 const distDirectory = fileURLToPath(new URL('../dist/', import.meta.url))
 const html = await readFile(resolve(distDirectory, 'index.html'), 'utf8')
@@ -31,6 +32,8 @@ for (const reference of assetReferences) {
   await access(assetPath)
 }
 
+const deckCount = await auditDeckAssets(distDirectory)
+
 async function findSourceMaps(directory) {
   const entries = await readdir(directory, { withFileTypes: true })
   const sourceMaps = []
@@ -54,4 +57,6 @@ if (sourceMaps.length > 0) {
   throw new Error(`Source maps must not be shipped: ${sourceMaps.join(', ')}`)
 }
 
-console.log(`Artifact audit passed for ${assetReferences.length} relative assets; no source maps found.`)
+console.log(
+  `Artifact audit passed for ${assetReferences.length} relative assets and ${deckCount} card deck(s); no source maps found.`,
+)
