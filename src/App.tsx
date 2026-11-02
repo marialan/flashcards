@@ -106,6 +106,9 @@ function App({ deckUrl, language }: AppProps = {}) {
                 <span>Image unavailable</span>
               </div>
             )}
+            <div className="card-word" hidden>
+              {state.result.initialCard.target_word}
+            </div>
           </div>
           <p className="load-status" role="status">
             {state.result.deck.cards.length} cards ready.

@@ -48,6 +48,11 @@ test('fits the card shell at the specified viewport sizes', async ({ page }) => 
       image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
       card.append(image)
     }
+    const wordFace = document.createElement('div')
+    wordFace.className = 'card-word'
+    wordFace.hidden = true
+    wordFace.textContent = `Café ${'extraordinarilylongword'.repeat(12)}`
+    card.append(wordFace)
     const status = document.createElement('p')
     status.className = 'load-status'
     status.textContent = '3 cards ready.'
@@ -65,12 +70,30 @@ test('fits the card shell at the specified viewport sizes', async ({ page }) => 
       const main = document.querySelector('main')
       const card = document.querySelector('.card-box')
       const images = document.querySelectorAll<HTMLImageElement>('.card-image')
-      if (!main || !card || images.length !== 2) {
+      const wordFace = document.querySelector<HTMLElement>('.card-word')
+      if (!main || !card || images.length !== 2 || !wordFace) {
         throw new Error('The card shell is unavailable.')
       }
 
       const mainRect = main.getBoundingClientRect()
       const cardRect = card.getBoundingClientRect()
+      const hiddenWordDisplay = getComputedStyle(wordFace).display
+      wordFace.hidden = false
+      const wordStyle = getComputedStyle(wordFace)
+      const wordRect = wordFace.getBoundingClientRect()
+      const wordLayout = {
+        text: wordFace.textContent,
+        fontSize: Number.parseFloat(wordStyle.fontSize),
+        overflowWrap: wordStyle.overflowWrap,
+        overflowY: wordStyle.overflowY,
+        width: wordRect.width,
+        height: wordRect.height,
+        scrollWidth: wordFace.scrollWidth,
+        clientWidth: wordFace.clientWidth,
+        scrollHeight: wordFace.scrollHeight,
+        clientHeight: wordFace.clientHeight,
+      }
+      wordFace.hidden = true
       return {
         viewportWidth: window.innerWidth,
         viewportHeight: window.innerHeight,
@@ -87,6 +110,8 @@ test('fits the card shell at the specified viewport sizes', async ({ page }) => 
         cardTop: cardRect.top,
         cardBottom: cardRect.bottom,
         cardCenterX: cardRect.left + cardRect.width / 2,
+        hiddenWordDisplay,
+        wordLayout,
       }
     })
 
@@ -102,6 +127,17 @@ test('fits the card shell at the specified viewport sizes', async ({ page }) => 
     expect(layout.cardTop).toBeGreaterThanOrEqual(0)
     expect(layout.cardBottom).toBeLessThanOrEqual(viewport.height)
     expect(layout.cardCenterX).toBeCloseTo(viewport.width / 2, 0)
+    expect(layout.hiddenWordDisplay).toBe('none')
+    expect(layout.wordLayout.text).toBe(`Café ${'extraordinarilylongword'.repeat(12)}`)
+    expect(layout.wordLayout.fontSize).toBeGreaterThanOrEqual(32)
+    expect(layout.wordLayout.overflowWrap).toBe('anywhere')
+    expect(layout.wordLayout.overflowY).toBe('auto')
+    expect(layout.wordLayout.width).toBe(layout.wordLayout.clientWidth)
+    expect(
+      Math.abs(layout.wordLayout.height - layout.wordLayout.clientHeight),
+    ).toBeLessThan(1)
+    expect(layout.wordLayout.scrollWidth).toBeLessThanOrEqual(layout.wordLayout.clientWidth)
+    expect(layout.wordLayout.scrollHeight).toBeGreaterThan(layout.wordLayout.clientHeight)
   }
 })
 

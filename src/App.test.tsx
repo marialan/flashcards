@@ -93,7 +93,7 @@ describe('App', () => {
             },
             {
               card_id: 'sat',
-              target_word: 'sat',
+              target_word: 'Café extraordinarilylongword',
               image: 'lang/english/images/sat.png',
               audio: 'lang/english/audios/sat.mp3',
             },
@@ -119,6 +119,10 @@ describe('App', () => {
       new URL('lang/english/images/sat.png', document.baseURI).href,
     )
     expect(image).toHaveClass('card-image')
+    const wordFace = screen.getByText('Café extraordinarilylongword')
+    expect(wordFace).toHaveClass('card-word')
+    expect(wordFace).toHaveAttribute('hidden')
+    expect(wordFace).not.toBeVisible()
     expect(screen.getByRole('heading', { name: 'Flashcards', level: 1 })).toBeVisible()
   })
 
