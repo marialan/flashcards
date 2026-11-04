@@ -180,3 +180,35 @@ test('rejects a deck redirect without requesting its destination', async ({ page
   expect(redirectRequests).toBe(1)
   expect(destinationRequests).toEqual([])
 })
+
+test('restores progress after reload and isolates it by launch identity', async ({ page }) => {
+  const source = await readFile(resolve('src', 'progress', 'progress.ts'), 'utf8')
+  await page.route('**/__test__/progress', (route) =>
+    route.fulfill({ contentType: 'text/javascript', body: stripTypeScriptTypes(source) }),
+  )
+
+  await page.goto('/?cr_book=reader&cr_lang=english&cr_user_id=user-one')
+  const saved = await page.evaluate(async () => {
+    const { createProgressStorageKey, saveProgress } = await import('/__test__/progress')
+    const key = createProgressStorageKey(window.location.search, 'english')
+    saveProgress(key, 'mat', 'word')
+    return key
+  })
+  expect(saved).toBe('flashcards:progress:v1:reader:english:user-one')
+
+  await page.reload()
+  const restored = await page.evaluate(async () => {
+    const { createProgressStorageKey, readSavedProgress } = await import('/__test__/progress')
+    const key = createProgressStorageKey(window.location.search, 'english')
+    return key ? readSavedProgress(key) : null
+  })
+  expect(restored).toEqual({ schema_version: 1, card_id: 'mat', face: 'word' })
+
+  await page.goto('/?cr_book=reader&cr_lang=english&cr_user_id=user-two')
+  const otherUserProgress = await page.evaluate(async () => {
+    const { createProgressStorageKey, readSavedProgress } = await import('/__test__/progress')
+    const key = createProgressStorageKey(window.location.search, 'english')
+    return key ? readSavedProgress(key) : null
+  })
+  expect(otherUserProgress).toBeNull()
+})

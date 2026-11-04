@@ -6,6 +6,8 @@ describe('App', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
+    localStorage.clear()
+    window.history.replaceState(null, '', '/')
   })
 
   it('shows retryable unavailability while launch lookup is unresolved', () => {
@@ -163,6 +165,246 @@ describe('App', () => {
       cardId: 'sat',
       asset: 'lang/english/images/sat.png',
     })
+  })
+
+  it('restores a saved card and face without starting pronunciation', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/?cr_book=reader&cr_lang=english&cr_user_id=user-one',
+    )
+    localStorage.setItem(
+      'flashcards:progress:v1:reader:english:user-one',
+      JSON.stringify({ schema_version: 1, card_id: 'mat', face: 'word' }),
+    )
+    const audioConstructor = vi.fn()
+    vi.stubGlobal('Audio', class {
+      constructor() {
+        audioConstructor()
+      }
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          schema_version: 1,
+          language: 'english',
+          cards: [
+            {
+              card_id: 'sat',
+              target_word: 'sat',
+              image: 'lang/english/images/sat.png',
+              audio: 'lang/english/audios/sat.mp3',
+            },
+            {
+              card_id: 'mat',
+              target_word: 'mat',
+              image: 'lang/english/images/mat.png',
+              audio: 'lang/english/audios/mat.mp3',
+            },
+          ],
+          card_order: ['sat', 'mat'],
+        }),
+    }))
+    vi.stubGlobal('Image', class {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      set src(value: string) {
+        if (value) queueMicrotask(() => this.onload?.())
+      }
+    })
+
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+
+    expect(await screen.findByRole('button', { name: 'Show picture' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(screen.getByText('mat')).toBeVisible()
+    expect(document.querySelector('.card-image')).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/mat.png'),
+    )
+    expect(audioConstructor).not.toHaveBeenCalled()
+  })
+
+  it('saves flips for the launch user and leaves the card usable when storage fails', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/?cr_book=reader&cr_lang=english&cr_user_id=user-one',
+    )
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Storage is disabled.', 'SecurityError')
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          schema_version: 1,
+          language: 'english',
+          cards: [{
+            card_id: 'sat',
+            target_word: 'sat',
+            image: 'lang/english/images/sat.png',
+            audio: 'lang/english/audios/sat.mp3',
+          }],
+          card_order: ['sat'],
+        }),
+    }))
+    vi.stubGlobal('Image', class {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      set src(value: string) {
+        if (value) queueMicrotask(() => this.onload?.())
+      }
+    })
+
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Show word' }))
+
+    expect(screen.getByRole('button', { name: 'Show picture' })).toBeVisible()
+    expect(screen.getByText('sat')).toBeVisible()
+    expect(warning).toHaveBeenCalledWith(
+      'Learner progress could not be restored or saved.',
+      { category: 'storage_unavailable' },
+    )
+  })
+
+  it('does not restore progress from another user or shared core', async () => {
+    localStorage.setItem(
+      'flashcards:progress:v1:reader:english:user-one',
+      JSON.stringify({ schema_version: 1, card_id: 'sat', face: 'word' }),
+    )
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          schema_version: 1,
+          language: 'english',
+          cards: [{
+            card_id: 'sat',
+            target_word: 'sat',
+            image: 'lang/english/images/sat.png',
+            audio: 'lang/english/audios/sat.mp3',
+          }],
+          card_order: ['sat'],
+        }),
+    }))
+    vi.stubGlobal('Image', class {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      set src(value: string) {
+        if (value) queueMicrotask(() => this.onload?.())
+      }
+    })
+
+    window.history.replaceState(
+      null,
+      '',
+      '/?cr_book=reader&cr_lang=english&cr_user_id=user-two',
+    )
+    const otherUser = render(<App deckUrl="/lang/english/deck.json" language="english" />)
+    expect(await screen.findByRole('button', { name: 'Show word' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    otherUser.unmount()
+
+    window.history.replaceState(
+      null,
+      '',
+      '/?cr_book=other-reader&cr_lang=english&cr_user_id=user-one',
+    )
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+    expect(await screen.findByRole('button', { name: 'Show word' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
+  it('does not save progress when the container user is missing', async () => {
+    window.history.replaceState(null, '', '/?cr_book=reader&cr_lang=english')
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          schema_version: 1,
+          language: 'english',
+          cards: [{
+            card_id: 'sat',
+            target_word: 'sat',
+            image: 'lang/english/images/sat.png',
+            audio: 'lang/english/audios/sat.mp3',
+          }],
+          card_order: ['sat'],
+        }),
+    }))
+    vi.stubGlobal('Image', class {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      set src(value: string) {
+        if (value) queueMicrotask(() => this.onload?.())
+      }
+    })
+
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Show word' }))
+
+    expect(screen.getByText('sat')).toBeVisible()
+    expect(localStorage.length).toBe(0)
+  })
+
+  it('discards saved progress for a card outside the current order', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/?cr_book=reader&cr_lang=english&cr_user_id=user-one',
+    )
+    const key = 'flashcards:progress:v1:reader:english:user-one'
+    localStorage.setItem(
+      key,
+      JSON.stringify({ schema_version: 1, card_id: 'missing', face: 'word' }),
+    )
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          schema_version: 1,
+          language: 'english',
+          cards: [{
+            card_id: 'sat',
+            target_word: 'sat',
+            image: 'lang/english/images/sat.png',
+            audio: 'lang/english/audios/sat.mp3',
+          }],
+          card_order: ['sat'],
+        }),
+    }))
+    vi.stubGlobal('Image', class {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      set src(value: string) {
+        if (value) queueMicrotask(() => this.onload?.())
+      }
+    })
+
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+
+    expect(await screen.findByRole('button', { name: 'Show word' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    expect(localStorage.getItem(key)).toBeNull()
   })
 
   it('replaces an image that fails after preload with the unavailable state', async () => {

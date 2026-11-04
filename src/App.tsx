@@ -6,6 +6,12 @@ import {
   type AudioController,
 } from './audio/audioController'
 import { DeckLoadError, loadDeck, type LoadedDeck } from './data/loadDeck'
+import {
+  createProgressStorageKey,
+  discardSavedProgress,
+  readSavedProgress,
+  saveProgress,
+} from './progress/progress'
 
 interface AppProps {
   deckUrl?: string
@@ -20,6 +26,7 @@ type LoadState =
       imageAvailable: boolean
       face: 'image' | 'word'
       audioStatus: 'idle' | 'playing' | 'unavailable'
+      progressKey: string | null
     }
   | { status: 'unavailable' }
 
@@ -54,17 +61,32 @@ function App({ deckUrl, language }: AppProps = {}) {
       }
     }
 
-    void loadDeck(deckUrl, language, { signal: controller.signal })
+    const progressKey = createProgressStorageKey(window.location.search, language)
+    const savedProgress = progressKey ? readSavedProgress(progressKey) : null
+
+    void loadDeck(deckUrl, language, {
+      signal: controller.signal,
+      initialCardId: savedProgress?.card_id,
+    })
       .then((result) => {
         if (!active) return
+
+        const validSavedProgress =
+          savedProgress && result.deck.card_order.includes(savedProgress.card_id)
+            ? savedProgress
+            : null
+        if (savedProgress && !validSavedProgress && progressKey) {
+          discardSavedProgress(progressKey)
+        }
 
         if (!result.initialImageAvailable) reportImageFailure(result)
         setState({
           status: 'ready',
           result,
           imageAvailable: result.initialImageAvailable,
-          face: 'image',
+          face: validSavedProgress?.face ?? 'image',
           audioStatus: 'idle',
+          progressKey,
         })
       })
       .catch((error: unknown) => {
@@ -159,6 +181,7 @@ function App({ deckUrl, language }: AppProps = {}) {
     if (state.status !== 'ready') return
 
     if (state.face === 'word') {
+      saveProgress(state.progressKey, state.result.initialCard.card_id, 'image')
       audioRequestIdRef.current += 1
       audioControllerRef.current?.stop()
       setState((current) =>
@@ -174,6 +197,7 @@ function App({ deckUrl, language }: AppProps = {}) {
     }
 
     const card = state.result.initialCard
+    saveProgress(state.progressKey, card.card_id, 'word')
     setState({
       ...state,
       face: 'word',

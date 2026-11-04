@@ -30,6 +30,7 @@ interface LoadDeckOptions {
   signal: AbortSignal
   timeoutMs?: number
   assetBaseUrl?: string
+  initialCardId?: string
 }
 
 function createAbortError() {
@@ -174,7 +175,12 @@ function loadImage(url: string, signal: AbortSignal, timeoutMs: number): Promise
 export async function loadDeck(
   deckUrl: string,
   expectedLanguage: string,
-  { signal, timeoutMs = 10_000, assetBaseUrl = document.baseURI }: LoadDeckOptions,
+  {
+    signal,
+    timeoutMs = 10_000,
+    assetBaseUrl = document.baseURI,
+    initialCardId,
+  }: LoadDeckOptions,
 ): Promise<LoadedDeck> {
   const startedAt = Date.now()
   let source: string
@@ -205,10 +211,13 @@ export async function loadDeck(
     )
   }
 
-  const firstCardId = deck.card_order[0]
-  const firstCard = deck.cards.find(({ card_id }) => card_id === firstCardId)
-  if (!firstCard) {
-    throw new DeckLoadError('The first ordered card is unavailable.', 'invalid_deck')
+  const selectedCardId =
+    initialCardId && deck.card_order.includes(initialCardId)
+      ? initialCardId
+      : deck.card_order[0]
+  const selectedCard = deck.cards.find(({ card_id }) => card_id === selectedCardId)
+  if (!selectedCard) {
+    throw new DeckLoadError('The selected ordered card is unavailable.', 'invalid_deck')
   }
 
   const remainingMs = Math.max(0, timeoutMs - (Date.now() - startedAt))
@@ -216,7 +225,7 @@ export async function loadDeck(
   if (remainingMs > 0) {
     try {
       initialImageAvailable = await loadImage(
-        new URL(firstCard.image, assetBaseUrl).href,
+        new URL(selectedCard.image, assetBaseUrl).href,
         signal,
         remainingMs,
       )
@@ -226,5 +235,5 @@ export async function loadDeck(
     }
   }
 
-  return { deck, initialCard: firstCard, initialImageAvailable }
+  return { deck, initialCard: selectedCard, initialImageAvailable }
 }
