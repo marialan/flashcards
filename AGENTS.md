@@ -62,6 +62,13 @@ When specifications and code differ, do not silently choose code. Identify the d
 3. Run the required automated and manual checks from `docs/specs/TESTSPEC.md` and report results in the task response.
 4. Do not update specs merely because an implementation step is completed, tested, or human-approved. Specs define requirements, not implementation progress or execution logs. Do not update the implementation plan unless requested.
 
+## Change Summaries
+
+When fixing an error or making a code change, include a concise summary in the
+response explaining what changed and what caused or justified the fix. Include
+the relevant coding details, such as added, modified, or removed variables,
+functions, components, styles, or tests, and describe their effect.
+
 ## When a Spec Update Is Necessary
 
 Update specs only for an approved requirements/behavior change or a necessary, approved clarification or correction. Routine implementation of existing requirements does not require a separate Spec Update task.

@@ -85,23 +85,60 @@ h1 {
   height: min(55svh, 25rem);
   min-height: 9rem;
   place-items: center;
+  overflow: visible;
+  border: 0;
+  border-radius: 1.5rem;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  perspective: 1000px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card-flipper {
+  position: relative;
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 200ms ease-in-out;
+}
+
+.card-flipper[data-face='word'] {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  box-sizing: border-box;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
   overflow: hidden;
   border: 3px solid #31584e;
   border-radius: 1.5rem;
   background: #fffefa;
   box-shadow: 0 0.5rem 1.5rem rgb(50 70 60 / 12%);
-  padding: 0;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  backface-visibility: hidden;
 }
 
-.card-box > * {
-  grid-area: 1 / 1;
+.card-word {
+  transform: rotateY(180deg);
+}
+
+.card-box[data-transition='next'] {
+  animation: card-slide-next 200ms ease-out both;
+}
+
+.card-box[data-transition='previous'] {
+  animation: card-slide-previous 200ms ease-out both;
 }
 
 .card-image {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
@@ -113,21 +150,12 @@ h1 {
   display: grid;
   width: 100%;
   height: 100%;
-  place-items: center;
   overflow: auto;
   padding: 1rem;
   font-size: clamp(2rem, 8vw, 3rem);
   line-height: 1.15;
   overflow-wrap: anywhere;
   hyphens: auto;
-}
-
-.card-word[hidden] {
-  display: none;
-}
-
-.card-image[hidden] {
-  display: none;
 }
 
 .audio-status {
@@ -278,8 +306,51 @@ h1 {
   }
 }
 
+@keyframes card-slide-next {
+  from {
+    transform: translateX(12%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes card-slide-previous {
+  from {
+    transform: translateX(-12%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .loading-indicator {
     animation: none;
+  }
+
+  .card-flipper,
+  .card-flipper[data-face='word'],
+  .card-word {
+    transform: none;
+  }
+
+  .card-flipper {
+    transition: none;
+  }
+
+  .card-flipper[data-face='image'] .card-word,
+  .card-flipper[data-face='word'] .card-image-face {
+    visibility: hidden;
+  }
+
+  .card-face {
+    backface-visibility: visible;
+  }
+
+  .card-box {
+    animation: none !important;
   }
 }

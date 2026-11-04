@@ -1,5 +1,11 @@
 import './App.css'
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import {
   AudioPlaybackError,
   createAudioController,
@@ -29,8 +35,11 @@ type LoadState =
       face: 'image' | 'word'
       audioStatus: 'idle' | 'playing' | 'unavailable'
       progressKey: string | null
+      transition: VisualTransition | null
     }
   | { status: 'unavailable' }
+
+type VisualTransition = 'flip' | 'next' | 'previous'
 
 interface PointerGesture {
   pointerId: number
@@ -62,6 +71,11 @@ function App({ deckUrl, language }: AppProps = {}) {
   const audioCardIdRef = useRef<string | null>(null)
   const pointerGestureRef = useRef<PointerGesture | null>(null)
   const suppressPointerClickRef = useRef(false)
+  const transitionLockedRef = useRef(false)
+  const visualTransitionRef = useRef<VisualTransition | null>(null)
+  const transitionTimeoutRef = useRef<number | null>(null)
+  const cardBoxRef = useRef<HTMLButtonElement | null>(null)
+  const cardFlipperRef = useRef<HTMLDivElement | null>(null)
   const [unavailablePreviewIds, setUnavailablePreviewIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   )
@@ -73,6 +87,13 @@ function App({ deckUrl, language }: AppProps = {}) {
     audioRequestIdRef.current += 1
     audioControllerRef.current?.stop()
     pointerGestureRef.current = null
+    suppressPointerClickRef.current = false
+    transitionLockedRef.current = false
+    visualTransitionRef.current = null
+    if (transitionTimeoutRef.current !== null) {
+      window.clearTimeout(transitionTimeoutRef.current)
+      transitionTimeoutRef.current = null
+    }
     setUnavailablePreviewIds(new Set())
     setState({ status: 'loading' })
 
@@ -111,6 +132,7 @@ function App({ deckUrl, language }: AppProps = {}) {
           face: validSavedProgress?.face ?? 'image',
           audioStatus: 'idle',
           progressKey,
+          transition: null,
         })
       })
       .catch((error: unknown) => {
@@ -131,6 +153,11 @@ function App({ deckUrl, language }: AppProps = {}) {
     () => () => {
       audioRequestIdRef.current += 1
       audioControllerRef.current?.dispose()
+      transitionLockedRef.current = false
+      visualTransitionRef.current = null
+      if (transitionTimeoutRef.current !== null) {
+        window.clearTimeout(transitionTimeoutRef.current)
+      }
     },
     [],
   )
@@ -201,9 +228,94 @@ function App({ deckUrl, language }: AppProps = {}) {
     )
   }
 
+  const finishVisualTransition = useCallback(() => {
+    transitionLockedRef.current = false
+    visualTransitionRef.current = null
+    if (transitionTimeoutRef.current !== null) {
+      window.clearTimeout(transitionTimeoutRef.current)
+      transitionTimeoutRef.current = null
+    }
+    setState((current) =>
+      current.status === 'ready' && current.transition !== null
+        ? { ...current, transition: null }
+        : current,
+    )
+  }, [])
+
+  const handleCardTransitionEnd = useCallback((event: Event) => {
+    if (
+      event.target === cardFlipperRef.current &&
+      visualTransitionRef.current === 'flip' &&
+      (event as TransitionEvent).propertyName === 'transform'
+    ) {
+      finishVisualTransition()
+    }
+  }, [finishVisualTransition])
+
+  const handleCardTransitionCancel = useCallback((event: Event) => {
+    if (
+      event.target === cardFlipperRef.current &&
+      visualTransitionRef.current === 'flip'
+    ) {
+      finishVisualTransition()
+    }
+  }, [finishVisualTransition])
+
+  const handleCardAnimationEnd = useCallback((event: Event) => {
+    if (
+      event.target === cardBoxRef.current &&
+      visualTransitionRef.current !== null &&
+      visualTransitionRef.current !== 'flip'
+    ) {
+      finishVisualTransition()
+    }
+  }, [finishVisualTransition])
+
+  const handleCardAnimationCancel = useCallback((event: Event) => {
+    if (
+      event.target === cardBoxRef.current &&
+      visualTransitionRef.current !== null &&
+      visualTransitionRef.current !== 'flip'
+    ) {
+      finishVisualTransition()
+    }
+  }, [finishVisualTransition])
+
+  const attachCardBox = useCallback((element: HTMLButtonElement | null) => {
+    const previous = cardBoxRef.current
+    if (previous) {
+      previous.removeEventListener('transitionend', handleCardTransitionEnd)
+      previous.removeEventListener('transitioncancel', handleCardTransitionCancel)
+      previous.removeEventListener('animationend', handleCardAnimationEnd)
+      previous.removeEventListener('animationcancel', handleCardAnimationCancel)
+    }
+    cardBoxRef.current = element
+    if (element) {
+      element.addEventListener('transitionend', handleCardTransitionEnd)
+      element.addEventListener('transitioncancel', handleCardTransitionCancel)
+      element.addEventListener('animationend', handleCardAnimationEnd)
+      element.addEventListener('animationcancel', handleCardAnimationCancel)
+    }
+  }, [
+    handleCardAnimationCancel,
+    handleCardAnimationEnd,
+    handleCardTransitionCancel,
+    handleCardTransitionEnd,
+  ])
+
+  function beginVisualTransition(transition: VisualTransition): VisualTransition | null {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return null
+
+    transitionLockedRef.current = true
+    visualTransitionRef.current = transition
+    transitionTimeoutRef.current = window.setTimeout(finishVisualTransition, 300)
+    return transition
+  }
+
   function toggleFace() {
-    if (state.status !== 'ready') return
+    if (state.status !== 'ready' || transitionLockedRef.current) return
     const card = state.currentCard
+    const transition = beginVisualTransition('flip')
 
     if (state.face === 'word') {
       saveProgress(state.progressKey, card.card_id, 'image')
@@ -215,6 +327,7 @@ function App({ deckUrl, language }: AppProps = {}) {
               ...current,
               face: 'image',
               audioStatus: current.audioStatus === 'playing' ? 'idle' : current.audioStatus,
+              transition,
             }
           : current,
       )
@@ -226,12 +339,13 @@ function App({ deckUrl, language }: AppProps = {}) {
       ...state,
       face: 'word',
       audioStatus: state.audioStatus === 'playing' ? 'idle' : state.audioStatus,
+      transition,
     })
     playPronunciation(card)
   }
 
   function navigate(direction: -1 | 1) {
-    if (state.status !== 'ready') return
+    if (state.status !== 'ready' || transitionLockedRef.current) return
 
     const cardCount = state.result.deck.card_order.length
     if (cardCount < 2) return
@@ -239,6 +353,7 @@ function App({ deckUrl, language }: AppProps = {}) {
     const currentIndex = state.result.deck.card_order.indexOf(state.currentCard.card_id)
     const nextIndex = (currentIndex + direction + cardCount) % cardCount
     const nextCard = getOrderedCard(state.result.deck, nextIndex)
+    const transition = beginVisualTransition(direction > 0 ? 'next' : 'previous')
     audioRequestIdRef.current += 1
     audioControllerRef.current?.stop()
     saveProgress(state.progressKey, nextCard.card_id, 'image')
@@ -250,13 +365,14 @@ function App({ deckUrl, language }: AppProps = {}) {
             imageAvailable: true,
             face: 'image',
             audioStatus: 'idle',
+            transition,
           }
         : current,
     )
   }
 
   function startPointerGesture(event: ReactPointerEvent<HTMLDivElement>) {
-    if (state.status !== 'ready') return
+    if (state.status !== 'ready' || transitionLockedRef.current) return
     if (pointerGestureRef.current) {
       pointerGestureRef.current = null
       suppressPointerClickRef.current = true
@@ -387,38 +503,54 @@ function App({ deckUrl, language }: AppProps = {}) {
               </button>
             )}
             <button
+              ref={attachCardBox}
               type="button"
               className="card-box"
               aria-label={state.face === 'image' ? 'Show word' : 'Show picture'}
               aria-pressed={state.face === 'word'}
+              data-transition={state.transition ?? undefined}
               onClick={toggleFace}
             >
-              {state.imageAvailable ? (
-                <img
-                  key={state.currentCard.card_id}
-                  className="card-image"
-                  src={new URL(state.currentCard.image, document.baseURI).href}
-                  alt="Picture card"
-                  draggable={false}
-                  hidden={state.face !== 'image'}
-                  onError={() => {
-                    reportImageFailure(state.currentCard)
-                    setState((current) =>
-                      current.status === 'ready' &&
-                      current.currentCard.card_id === state.currentCard.card_id
-                        ? { ...current, imageAvailable: false }
-                        : current,
-                    )
-                  }}
-                />
-              ) : (
-                <div className="image-unavailable" role="status" hidden={state.face !== 'image'}>
-                  <span className="unavailable-icon" aria-hidden="true">!</span>
-                  <span>Image unavailable</span>
+              <div
+                ref={cardFlipperRef}
+                className="card-flipper"
+                data-face={state.face}
+                data-transition={state.transition ?? undefined}
+              >
+                <div
+                  className="card-face card-image-face"
+                  aria-hidden={state.face !== 'image'}
+                >
+                  {state.imageAvailable ? (
+                    <img
+                      key={state.currentCard.card_id}
+                      className="card-image"
+                      src={new URL(state.currentCard.image, document.baseURI).href}
+                      alt="Picture card"
+                      draggable={false}
+                      onError={() => {
+                        reportImageFailure(state.currentCard)
+                        setState((current) =>
+                          current.status === 'ready' &&
+                          current.currentCard.card_id === state.currentCard.card_id
+                            ? { ...current, imageAvailable: false }
+                            : current,
+                        )
+                      }}
+                    />
+                  ) : (
+                    <div className="image-unavailable" role="status">
+                      <span className="unavailable-icon" aria-hidden="true">!</span>
+                      <span>Image unavailable</span>
+                    </div>
+                  )}
                 </div>
-              )}
-              <div className="card-word" hidden={state.face !== 'word'}>
-                {state.currentCard.target_word}
+                <div
+                  className="card-face card-word"
+                  aria-hidden={state.face !== 'word'}
+                >
+                  {state.currentCard.target_word}
+                </div>
               </div>
             </button>
             {nextCard && (

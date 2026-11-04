@@ -54,6 +54,23 @@ function dispatchPointer(
   act(() => target.dispatchEvent(event))
 }
 
+function completeVisualTransition() {
+  const card = screen.getByRole('button', { name: /Show (word|picture)/ })
+  if (
+    card.getAttribute('data-transition') === 'next' ||
+    card.getAttribute('data-transition') === 'previous'
+  ) {
+    act(() => card.dispatchEvent(new Event('animationend', { bubbles: true })))
+    return
+  }
+
+  const flipper = card.querySelector('.card-flipper')
+  if (!flipper) throw new Error('The card flipper is unavailable.')
+  const event = new Event('transitionend', { bubbles: true })
+  Object.defineProperty(event, 'propertyName', { value: 'transform' })
+  act(() => flipper.dispatchEvent(event))
+}
+
 describe('App', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
@@ -175,8 +192,7 @@ describe('App', () => {
     expect(image).toHaveClass('card-image')
     const wordFace = screen.getByText('Café extraordinarilylongword')
     expect(wordFace).toHaveClass('card-word')
-    expect(wordFace).toHaveAttribute('hidden')
-    expect(wordFace).not.toBeVisible()
+    expect(wordFace).toHaveAttribute('aria-hidden', 'true')
     expect(screen.getByRole('heading', { name: 'Flashcards', level: 1 })).toBeVisible()
   })
 
@@ -234,11 +250,13 @@ describe('App', () => {
     render(<App deckUrl="/lang/english/deck.json" language="english" />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Show word' }))
+    completeVisualTransition()
     expect(await screen.findByRole('button', { name: 'Play word again' })).toBeVisible()
     expect(audio?.play).toHaveBeenCalledTimes(1)
     const nextButton = screen.getByRole('button', { name: 'Next card' })
     nextButton.focus()
     fireEvent.click(nextButton)
+    completeVisualTransition()
 
     expect(nextButton).toHaveFocus()
     expect(screen.getByRole('button', { name: 'Show word' })).toHaveAttribute(
@@ -257,16 +275,19 @@ describe('App', () => {
     ).toEqual({ schema_version: 1, card_id: 'cat', face: 'image' })
 
     fireEvent.click(nextButton)
+    completeVisualTransition()
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
       expect.stringContaining('/lang/english/images/mat.png'),
     )
     fireEvent.click(nextButton)
+    completeVisualTransition()
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
       expect.stringContaining('/lang/english/images/sat.png'),
     )
     fireEvent.click(screen.getByRole('button', { name: 'Previous card' }))
+    completeVisualTransition()
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
       expect.stringContaining('/lang/english/images/mat.png'),
@@ -294,11 +315,13 @@ describe('App', () => {
     const nextButton = await screen.findByRole('button', { name: 'Next card' })
     const previousButton = screen.getByRole('button', { name: 'Previous card' })
     fireEvent.click(nextButton)
+    completeVisualTransition()
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
       expect.stringContaining('/lang/english/images/mat.png'),
     )
     fireEvent.click(previousButton)
+    completeVisualTransition()
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
       expect.stringContaining('/lang/english/images/sat.png'),
@@ -326,6 +349,7 @@ describe('App', () => {
 
     nextButton.focus()
     fireEvent.click(nextButton)
+    completeVisualTransition()
 
     expect(nextButton).toHaveFocus()
     expect(screen.getByRole('status')).toHaveTextContent('Card 2 of 3, image side.')
@@ -401,6 +425,7 @@ describe('App', () => {
     }
 
     sendGesture(1, 110, 100)
+    completeVisualTransition()
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
       expect.stringContaining('/lang/english/images/mat.png'),
@@ -475,6 +500,97 @@ describe('App', () => {
       'aria-pressed',
       'false',
     )
+  })
+
+  it('ignores rapid mixed flip and navigation actions until each transition finishes', async () => {
+    class MockAudio {
+      src = ''
+      currentTime = 0
+      error: MediaError | null = null
+      onerror: (() => void) | null = null
+      onplaying: (() => void) | null = null
+      onended: (() => void) | null = null
+      readonly play = vi.fn(async () => undefined)
+      readonly pause = vi.fn()
+      readonly load = vi.fn()
+      readonly removeAttribute = vi.fn((name: string) => {
+        if (name === 'src') this.src = ''
+      })
+    }
+
+    vi.stubGlobal('Audio', MockAudio)
+    stubDeck(createCards('sat', 'mat', 'cat'))
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+
+    const flipButton = await screen.findByRole('button', { name: 'Show word' })
+    fireEvent.click(flipButton)
+    fireEvent.click(screen.getByRole('button', { name: 'Show picture' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Next card' }))
+    expect(screen.getByRole('button', { name: 'Show picture' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    act(() => {
+      const flipper = flipButton.querySelector('.card-flipper')
+      if (!flipper) throw new Error('The card flipper is unavailable.')
+      flipper.dispatchEvent(new Event('transitioncancel', { bubbles: true }))
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Next card' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Next card' }))
+    expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/mat.png'),
+    )
+
+    const card = screen.getByRole('button', { name: 'Show word' })
+    act(() => {
+      card.dispatchEvent(new Event('animationcancel', { bubbles: true }))
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Next card' }))
+    expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/cat.png'),
+    )
+  })
+
+  it('commits flips and navigation immediately without locking in reduced-motion mode', async () => {
+    class MockAudio {
+      src = ''
+      currentTime = 0
+      error: MediaError | null = null
+      onerror: (() => void) | null = null
+      onplaying: (() => void) | null = null
+      onended: (() => void) | null = null
+      readonly play = vi.fn(async () => undefined)
+      readonly pause = vi.fn()
+      readonly load = vi.fn()
+      readonly removeAttribute = vi.fn((name: string) => {
+        if (name === 'src') this.src = ''
+      })
+    }
+
+    vi.stubGlobal('Audio', MockAudio)
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })))
+    stubDeck(createCards('sat', 'mat', 'cat'))
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Show word' }))
+    expect(
+      screen.getByRole('button', { name: 'Show picture' }),
+    ).not.toHaveAttribute('data-transition')
+    fireEvent.click(screen.getByRole('button', { name: 'Show picture' }))
+    const nextButton = screen.getByRole('button', { name: 'Next card' })
+    fireEvent.click(nextButton)
+    fireEvent.click(nextButton)
+
+    expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/cat.png'),
+    )
+    expect(
+      screen.getByRole('button', { name: 'Show word' }),
+    ).not.toHaveAttribute('data-transition')
   })
 
   it('shows an explicit image-failure state without making the deck unavailable', async () => {
@@ -840,25 +956,27 @@ describe('App', () => {
 
     const flipButton = await screen.findByRole('button', { name: 'Show word' })
     expect(flipButton).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByText('sat')).not.toBeVisible()
+    expect(screen.getByText('sat')).toHaveAttribute('aria-hidden', 'true')
 
     for (let cycle = 0; cycle < 20; cycle += 1) {
       fireEvent.click(flipButton)
+      completeVisualTransition()
 
       expect(screen.getByRole('button', { name: 'Show picture' })).toHaveAttribute(
         'aria-pressed',
         'true',
       )
-      expect(screen.getByText('sat')).toBeVisible()
+      expect(screen.getByText('sat')).toHaveAttribute('aria-hidden', 'false')
       expect(audio?.play).toHaveBeenCalledTimes(cycle + 1)
 
       fireEvent.click(screen.getByRole('button', { name: 'Show picture' }))
+      completeVisualTransition()
 
       expect(screen.getByRole('button', { name: 'Show word' })).toHaveAttribute(
         'aria-pressed',
         'false',
       )
-      expect(screen.getByText('sat')).not.toBeVisible()
+      expect(screen.getByText('sat')).toHaveAttribute('aria-hidden', 'true')
       expect(audio?.src).toBe('')
       expect(audio?.currentTime).toBe(0)
     }
