@@ -199,4 +199,251 @@ describe('App', () => {
     expect(await screen.findByText('Image unavailable')).toBeVisible()
     expect(screen.getByText('1 cards ready.')).toBeVisible()
   })
+
+  it('flips with one pronunciation per reveal and completes 20 repeated cycles', async () => {
+    class MockAudio {
+      src = ''
+      currentTime = 0
+      error: MediaError | null = null
+      onerror: (() => void) | null = null
+      readonly play = vi.fn(async () => undefined)
+      readonly pause = vi.fn()
+      readonly load = vi.fn()
+      readonly removeAttribute = vi.fn((name: string) => {
+        if (name === 'src') this.src = ''
+      })
+    }
+
+    let audio: MockAudio | undefined
+    vi.stubGlobal('Audio', class extends MockAudio {
+      constructor() {
+        super()
+        audio = this
+      }
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          schema_version: 1,
+          language: 'english',
+          cards: [{
+            card_id: 'sat',
+            target_word: 'sat',
+            image: 'lang/english/images/sat.png',
+            audio: 'lang/english/audios/sat.mp3',
+          }],
+          card_order: ['sat'],
+        }),
+    }))
+    vi.stubGlobal('Image', class {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      set src(value: string) {
+        if (value) queueMicrotask(() => this.onload?.())
+      }
+    })
+
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+
+    const flipButton = await screen.findByRole('button', { name: 'Show word' })
+    expect(flipButton).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByText('sat')).not.toBeVisible()
+
+    for (let cycle = 0; cycle < 20; cycle += 1) {
+      fireEvent.click(flipButton)
+
+      expect(screen.getByRole('button', { name: 'Show picture' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+      expect(screen.getByText('sat')).toBeVisible()
+      expect(audio?.play).toHaveBeenCalledTimes(cycle + 1)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Show picture' }))
+
+      expect(screen.getByRole('button', { name: 'Show word' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+      expect(screen.getByText('sat')).not.toBeVisible()
+      expect(audio?.src).toBe('')
+      expect(audio?.currentTime).toBe(0)
+    }
+
+    expect(audio?.play).toHaveBeenCalledTimes(20)
+    expect(audio?.pause).toHaveBeenCalledTimes(40)
+  })
+
+  it('keeps the word visible and reports retryable audio failure', async () => {
+    class MockAudio {
+      src = ''
+      currentTime = 0
+      error: MediaError | null = null
+      onerror: (() => void) | null = null
+      onplaying: (() => void) | null = null
+      onended: (() => void) | null = null
+      readonly play = vi.fn()
+        .mockRejectedValueOnce(new Error('Playback is not allowed.'))
+        .mockRejectedValueOnce(new Error('Playback is still unavailable.'))
+        .mockResolvedValueOnce(undefined)
+      readonly pause = vi.fn()
+      readonly load = vi.fn()
+      readonly removeAttribute = vi.fn((name: string) => {
+        if (name === 'src') this.src = ''
+      })
+    }
+
+    let audio: MockAudio | undefined
+    vi.stubGlobal('Audio', class extends MockAudio {
+      constructor() {
+        super()
+        audio = this
+      }
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          schema_version: 1,
+          language: 'english',
+          cards: [{
+            card_id: 'sat',
+            target_word: 'sat',
+            image: 'lang/english/images/sat.png',
+            audio: 'lang/english/audios/sat.mp3',
+          }],
+          card_order: ['sat'],
+        }),
+    }))
+    vi.stubGlobal('Image', class {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      set src(value: string) {
+        if (value) queueMicrotask(() => this.onload?.())
+      }
+    })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Show word' }))
+
+    expect(await screen.findByText('Audio unavailable')).toBeVisible()
+    expect(screen.getByText('sat')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Show picture' })).toBeEnabled()
+    const replayButton = screen.getByRole('button', { name: 'Retry word audio' })
+    expect(replayButton).toHaveAttribute('data-playback-state', 'unavailable')
+    expect(errorSpy).toHaveBeenCalledWith('Pronunciation audio unavailable.', {
+      category: 'audio',
+      cardId: 'sat',
+      asset: expect.stringContaining('/lang/english/audios/sat.mp3'),
+    })
+
+    fireEvent.click(replayButton)
+    await waitFor(() => {
+      expect(audio?.play).toHaveBeenCalledTimes(2)
+      expect(audio?.pause).toHaveBeenCalledTimes(4)
+    })
+    expect(screen.getByText('Audio unavailable')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Retry word audio' })).toHaveAttribute(
+      'data-playback-state',
+      'unavailable',
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry word audio' }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('Audio unavailable')).not.toBeInTheDocument()
+    })
+    expect(screen.getByRole('button', { name: 'Show picture' })).toBeVisible()
+    expect(screen.getByText('sat')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Play word again' })).toHaveAttribute(
+      'data-playback-state',
+      'playing',
+    )
+    expect(audio?.play).toHaveBeenCalledTimes(3)
+  })
+
+  it('replays pronunciation without flipping and returns to idle when it ends', async () => {
+    class MockAudio {
+      src = ''
+      currentTime = 0
+      error: MediaError | null = null
+      onerror: (() => void) | null = null
+      onplaying: (() => void) | null = null
+      onended: (() => void) | null = null
+      readonly play = vi.fn(async () => {
+        this.onplaying?.()
+      })
+      readonly pause = vi.fn()
+      readonly load = vi.fn()
+      readonly removeAttribute = vi.fn((name: string) => {
+        if (name === 'src') this.src = ''
+      })
+    }
+
+    let audio: MockAudio | undefined
+    vi.stubGlobal('Audio', class extends MockAudio {
+      constructor() {
+        super()
+        audio = this
+      }
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          schema_version: 1,
+          language: 'english',
+          cards: [{
+            card_id: 'sat',
+            target_word: 'sat',
+            image: 'lang/english/images/sat.png',
+            audio: 'lang/english/audios/sat.mp3',
+          }],
+          card_order: ['sat'],
+        }),
+    }))
+    vi.stubGlobal('Image', class {
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      set src(value: string) {
+        if (value) queueMicrotask(() => this.onload?.())
+      }
+    })
+
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+    expect(screen.queryByRole('button', { name: 'Play word again' })).not.toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: 'Show word' }))
+
+    const replayButton = await screen.findByRole('button', { name: 'Play word again' })
+    expect(replayButton).toHaveAttribute('data-playback-state', 'playing')
+    expect(replayButton.closest('.card-box')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Show picture' })).toBeVisible()
+
+    audio!.currentTime = 2
+    fireEvent.click(replayButton)
+
+    await waitFor(() => {
+      expect(audio?.play).toHaveBeenCalledTimes(2)
+    })
+    expect(audio?.currentTime).toBe(0)
+    expect(screen.getByRole('button', { name: 'Show picture' })).toBeVisible()
+    expect(screen.getByText('sat')).toBeVisible()
+    expect(screen.getByText('Playing pronunciation')).toBeVisible()
+
+    audio?.onended?.()
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Play word again' })).toHaveAttribute(
+        'data-playback-state',
+        'idle',
+      )
+    })
+    expect(screen.getByText('Replay')).toBeVisible()
+    expect(screen.queryByText('Playing pronunciation')).not.toBeInTheDocument()
+  })
 })

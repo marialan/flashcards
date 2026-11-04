@@ -20,18 +20,22 @@ export interface AudioController {
 
 export function createAudioController(
   onFailure: (error: AudioPlaybackError) => void,
+  onPlaybackStateChange: (state: 'idle' | 'playing') => void,
 ): AudioController {
   const audio = new Audio()
   let requestId = 0
   let disposed = false
 
-  function cancelCurrentPlayback() {
+  function cancelCurrentPlayback(notifyIdle = true) {
     requestId += 1
     audio.onerror = null
+    audio.onplaying = null
+    audio.onended = null
     audio.pause()
     audio.currentTime = 0
     audio.removeAttribute('src')
     audio.load()
+    if (notifyIdle) onPlaybackStateChange('idle')
   }
 
   return {
@@ -51,6 +55,16 @@ export function createAudioController(
       audio.pause()
       audio.currentTime = 0
       audio.src = asset
+      audio.onplaying = () => {
+        if (currentRequestId === requestId && !disposed) {
+          onPlaybackStateChange('playing')
+        }
+      }
+      audio.onended = () => {
+        if (currentRequestId === requestId && !disposed) {
+          onPlaybackStateChange('idle')
+        }
+      }
       audio.onerror = () => {
         if (currentRequestId !== requestId || disposed) return
         const cause = audio.error ?? new Error('Media element reported playback failure.')
@@ -78,7 +92,7 @@ export function createAudioController(
     },
     dispose() {
       if (disposed) return
-      cancelCurrentPlayback()
+      cancelCurrentPlayback(false)
       disposed = true
     },
   }

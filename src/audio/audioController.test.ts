@@ -6,6 +6,8 @@ class MockAudio {
   currentTime = 0
   error: MediaError | null = null
   onerror: (() => void) | null = null
+  onplaying: (() => void) | null = null
+  onended: (() => void) | null = null
   readonly playTimes: number[] = []
   playCount = 0
   pauseCount = 0
@@ -56,15 +58,41 @@ describe('createAudioController', () => {
     vi.unstubAllGlobals()
   })
 
-  function createController(onFailure = vi.fn()) {
+  function createController(
+    onFailure = vi.fn(),
+    onPlaybackStateChange = vi.fn(),
+  ) {
     vi.stubGlobal('Audio', class extends MockAudio {
       constructor() {
         super()
         audio = this
       }
     })
-    return { controller: createAudioController(onFailure), onFailure }
+    return {
+      controller: createAudioController(onFailure, onPlaybackStateChange),
+      onFailure,
+      onPlaybackStateChange,
+    }
   }
+
+  it('reports playback, completion, and stop states', async () => {
+    const { controller, onPlaybackStateChange } = createController()
+    const asset = '/lang/english/audios/sat.mp3'
+
+    await controller.play(asset)
+    audio.onplaying?.()
+    audio.onended?.()
+    await controller.play(asset)
+    audio.onplaying?.()
+    controller.stop()
+
+    expect(onPlaybackStateChange.mock.calls).toEqual([
+      ['playing'],
+      ['idle'],
+      ['playing'],
+      ['idle'],
+    ])
+  })
 
   it('restarts the same audio element from the beginning without overlapping playback', async () => {
     const { controller } = createController()
