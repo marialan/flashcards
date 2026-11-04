@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import type { Flashcard } from './data/deck'
@@ -21,6 +21,37 @@ function stubDeck(cards: Flashcard[], cardOrder = cards.map(({ card_id }) => car
       if (value) queueMicrotask(() => this.onload?.())
     }
   })
+}
+
+function createCards(...cardIds: string[]): Flashcard[] {
+  return cardIds.map((cardId) => ({
+    card_id: cardId,
+    target_word: cardId,
+    image: `lang/english/images/${cardId}.png`,
+    audio: `lang/english/audios/${cardId}.mp3`,
+  }))
+}
+
+function dispatchPointer(
+  target: HTMLElement,
+  type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel',
+  details: {
+    pointerId: number
+    clientX: number
+    clientY: number
+    button?: number
+    isPrimary?: boolean
+  },
+) {
+  const event = new Event(type, { bubbles: true, cancelable: true })
+  for (const [key, value] of Object.entries({
+    button: 0,
+    isPrimary: true,
+    ...details,
+  })) {
+    Object.defineProperty(event, key, { value })
+  }
+  act(() => target.dispatchEvent(event))
 }
 
 describe('App', () => {
@@ -274,7 +305,152 @@ describe('App', () => {
     )
   })
 
-  it('omits arrow controls for a one-card deck', async () => {
+  it('shows image peeks with distinct names and keeps focus on navigation', async () => {
+    stubDeck(createCards('sat', 'mat', 'cat'))
+
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+
+    const previousButton = await screen.findByRole('button', { name: 'Previous card' })
+    const nextButton = screen.getByRole('button', { name: 'Next card' })
+    expect(previousButton.querySelector('img')).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/cat.png'),
+    )
+    expect(nextButton.querySelector('img')).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/mat.png'),
+    )
+    expect(previousButton.querySelector('img')).toHaveAttribute('aria-hidden', 'true')
+    expect(nextButton.querySelector('img')).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.getAllByRole('img', { name: 'Picture card' })).toHaveLength(1)
+
+    nextButton.focus()
+    fireEvent.click(nextButton)
+
+    expect(nextButton).toHaveFocus()
+    expect(screen.getByRole('status')).toHaveTextContent('Card 2 of 3, image side.')
+    expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/mat.png'),
+    )
+  })
+
+  it.each([
+    { displacement: 39, shouldNavigate: false },
+    { displacement: 40, shouldNavigate: true },
+    { displacement: 41, shouldNavigate: true },
+  ])('recognizes $displacement px horizontal swipes at the threshold', async ({
+    displacement,
+    shouldNavigate,
+  }) => {
+    stubDeck(createCards('sat', 'mat', 'cat'))
+
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+
+    const card = await screen.findByRole('button', { name: 'Show word' })
+    const carousel = screen.getByRole('group', { name: 'Flashcard carousel' })
+    dispatchPointer(card, 'pointerdown', { pointerId: 1, clientX: 100, clientY: 100 })
+    dispatchPointer(carousel, 'pointermove', {
+      pointerId: 1,
+      clientX: 100 - displacement,
+      clientY: 100,
+    })
+    dispatchPointer(carousel, 'pointerup', {
+      pointerId: 1,
+      clientX: 100 - displacement,
+      clientY: 100,
+    })
+    fireEvent.click(card, { detail: 1 })
+
+    expect(screen.getByRole('button', { name: 'Show word' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
+      'src',
+      expect.stringContaining(
+        shouldNavigate ? '/lang/english/images/mat.png' : '/lang/english/images/sat.png',
+      ),
+    )
+  })
+
+  it('treats a 10 px movement as a tap but rejects 11 px and diagonal swipes', async () => {
+    stubDeck(createCards('sat', 'mat', 'cat'))
+
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+
+    const nextButton = await screen.findByRole('button', { name: 'Next card' })
+    const carousel = screen.getByRole('group', { name: 'Flashcard carousel' })
+    const sendGesture = (pointerId: number, x: number, y: number) => {
+      dispatchPointer(nextButton, 'pointerdown', {
+        pointerId,
+        clientX: 100,
+        clientY: 100,
+      })
+      dispatchPointer(carousel, 'pointermove', {
+        pointerId,
+        clientX: x,
+        clientY: y,
+      })
+      dispatchPointer(carousel, 'pointerup', {
+        pointerId,
+        clientX: x,
+        clientY: y,
+      })
+      fireEvent.click(nextButton, { detail: 1 })
+    }
+
+    sendGesture(1, 110, 100)
+    expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/mat.png'),
+    )
+
+    sendGesture(2, 111, 100)
+    expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/mat.png'),
+    )
+
+    sendGesture(3, 140, 140)
+    expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/mat.png'),
+    )
+  })
+
+  it('cancels pointercancel and multi-pointer gestures without flipping', async () => {
+    stubDeck(createCards('sat', 'mat'))
+
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+
+    const card = await screen.findByRole('button', { name: 'Show word' })
+    const carousel = screen.getByRole('group', { name: 'Flashcard carousel' })
+    dispatchPointer(card, 'pointerdown', { pointerId: 1, clientX: 100, clientY: 100 })
+    dispatchPointer(carousel, 'pointermove', { pointerId: 1, clientX: 50, clientY: 100 })
+    dispatchPointer(carousel, 'pointercancel', { pointerId: 1, clientX: 50, clientY: 100 })
+    fireEvent.click(card, { detail: 1 })
+    expect(screen.getByRole('button', { name: 'Show word' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+
+    dispatchPointer(card, 'pointerdown', { pointerId: 2, clientX: 100, clientY: 100 })
+    dispatchPointer(carousel, 'pointerdown', {
+      pointerId: 3,
+      clientX: 100,
+      clientY: 100,
+      isPrimary: false,
+    })
+    dispatchPointer(carousel, 'pointerup', { pointerId: 2, clientX: 50, clientY: 100 })
+    fireEvent.click(card, { detail: 1 })
+    expect(screen.getByRole('button', { name: 'Show word' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+  })
+
+  it('omits peeks for a one-card deck and keeps swipes inert', async () => {
     stubDeck([{
       card_id: 'sat',
       target_word: 'sat',
@@ -287,6 +463,18 @@ describe('App', () => {
     expect(await screen.findByRole('button', { name: 'Show word' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Previous card' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Next card' })).not.toBeInTheDocument()
+
+    const card = screen.getByRole('button', { name: 'Show word' })
+    const carousel = screen.getByRole('group', { name: 'Flashcard carousel' })
+    dispatchPointer(card, 'pointerdown', { pointerId: 1, clientX: 100, clientY: 100 })
+    dispatchPointer(carousel, 'pointermove', { pointerId: 1, clientX: 50, clientY: 100 })
+    dispatchPointer(carousel, 'pointerup', { pointerId: 1, clientX: 50, clientY: 100 })
+    fireEvent.click(card, { detail: 1 })
+
+    expect(screen.getByRole('button', { name: 'Show word' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
   })
 
   it('shows an explicit image-failure state without making the deck unavailable', async () => {

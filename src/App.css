@@ -25,12 +25,13 @@ h1 {
   display: grid;
   justify-items: center;
   gap: 0.5rem;
-  width: min(100%, 32rem);
+  width: min(100%, 40rem);
 }
 
 .card-stage-navigable {
-  grid-template-columns: 3rem minmax(0, 1fr) 3rem;
+  grid-template-columns: minmax(3rem, 0.2fr) minmax(0, 1fr) minmax(3rem, 0.2fr);
   align-items: center;
+  touch-action: pan-y;
 }
 
 .card-stage-navigable .card-box {
@@ -42,22 +43,38 @@ h1 {
   grid-column: 1 / -1;
 }
 
-.card-navigation {
+.card-preview {
   display: grid;
-  width: 3rem;
+  width: 100%;
   min-width: 3rem;
-  height: 3rem;
+  height: min(55svh, 25rem);
+  min-height: 9rem;
   place-items: center;
   border: 2px solid #31584e;
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   background: #fffefa;
   padding: 0;
   color: inherit;
   font: inherit;
-  font-size: 2rem;
-  line-height: 1;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+.card-preview-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.card-preview-placeholder {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 2px solid currentColor;
+  border-radius: 50%;
 }
 
 .card-box {
@@ -190,7 +207,7 @@ h1 {
 }
 
 .card-box:focus-visible,
-.card-navigation:focus-visible,
+.card-preview:focus-visible,
 .audio-replay:focus-visible {
   outline: 3px solid #9a5b00;
   outline-offset: 3px;
@@ -214,6 +231,16 @@ h1 {
   gap: 1rem;
   margin: 0;
   text-align: center;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
 }
 
 .loading-indicator {

@@ -1,5 +1,5 @@
 import './App.css'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   AudioPlaybackError,
   createAudioController,
@@ -32,6 +32,13 @@ type LoadState =
     }
   | { status: 'unavailable' }
 
+interface PointerGesture {
+  pointerId: number
+  startX: number
+  startY: number
+  maxTravel: number
+}
+
 function reportImageFailure(card: Flashcard) {
   console.error('Flashcard image unavailable.', {
     category: 'image',
@@ -53,6 +60,11 @@ function App({ deckUrl, language }: AppProps = {}) {
   const audioControllerRef = useRef<AudioController | null>(null)
   const audioRequestIdRef = useRef(0)
   const audioCardIdRef = useRef<string | null>(null)
+  const pointerGestureRef = useRef<PointerGesture | null>(null)
+  const suppressPointerClickRef = useRef(false)
+  const [unavailablePreviewIds, setUnavailablePreviewIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
 
   useEffect(() => {
     const controller = new AbortController()
@@ -60,6 +72,8 @@ function App({ deckUrl, language }: AppProps = {}) {
 
     audioRequestIdRef.current += 1
     audioControllerRef.current?.stop()
+    pointerGestureRef.current = null
+    setUnavailablePreviewIds(new Set())
     setState({ status: 'loading' })
 
     if (!deckUrl || !language) {
@@ -241,6 +255,77 @@ function App({ deckUrl, language }: AppProps = {}) {
     )
   }
 
+  function startPointerGesture(event: ReactPointerEvent<HTMLDivElement>) {
+    if (state.status !== 'ready') return
+    if (pointerGestureRef.current) {
+      pointerGestureRef.current = null
+      suppressPointerClickRef.current = true
+      return
+    }
+    if (!event.isPrimary || event.button !== 0) return
+
+    suppressPointerClickRef.current = false
+    pointerGestureRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      maxTravel: 0,
+    }
+
+    const captureTarget =
+      event.target instanceof Element
+        ? event.target.closest('button') ?? event.currentTarget
+        : event.currentTarget
+    captureTarget.setPointerCapture?.(event.pointerId)
+  }
+
+  function updatePointerGesture(event: ReactPointerEvent<HTMLDivElement>) {
+    const gesture = pointerGestureRef.current
+    if (!gesture || gesture.pointerId !== event.pointerId) return
+
+    gesture.maxTravel = Math.max(
+      gesture.maxTravel,
+      Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY),
+    )
+  }
+
+  function finishPointerGesture(event: ReactPointerEvent<HTMLDivElement>) {
+    const gesture = pointerGestureRef.current
+    if (!gesture || gesture.pointerId !== event.pointerId) return
+
+    updatePointerGesture(event)
+    pointerGestureRef.current = null
+    if (gesture.maxTravel <= 10) return
+
+    suppressPointerClickRef.current = true
+    const horizontalTravel = event.clientX - gesture.startX
+    const verticalTravel = event.clientY - gesture.startY
+    if (Math.abs(horizontalTravel) >= 40 && Math.abs(horizontalTravel) > Math.abs(verticalTravel)) {
+      navigate(horizontalTravel < 0 ? 1 : -1)
+    }
+  }
+
+  function cancelPointerGesture(event: ReactPointerEvent<HTMLDivElement>) {
+    const gesture = pointerGestureRef.current
+    if (!gesture || gesture.pointerId !== event.pointerId) return
+    pointerGestureRef.current = null
+    suppressPointerClickRef.current = true
+  }
+
+  const cardCount = state.status === 'ready' ? state.result.deck.card_order.length : 0
+  const currentIndex =
+    state.status === 'ready'
+      ? state.result.deck.card_order.indexOf(state.currentCard.card_id)
+      : -1
+  const previousCard =
+    state.status === 'ready' && cardCount > 1
+      ? getOrderedCard(state.result.deck, (currentIndex - 1 + cardCount) % cardCount)
+      : null
+  const nextCard =
+    state.status === 'ready' && cardCount > 1
+      ? getOrderedCard(state.result.deck, (currentIndex + 1) % cardCount)
+      : null
+
   return (
     <main aria-busy={state.status === 'loading'}>
       <h1>Flashcards</h1>
@@ -260,20 +345,45 @@ function App({ deckUrl, language }: AppProps = {}) {
       {state.status === 'ready' && (
         <>
           <div
-            className={state.result.deck.card_order.length > 1
+            className={cardCount > 1
               ? 'card-stage card-stage-navigable'
               : 'card-stage'}
             role="group"
             aria-label="Flashcard carousel"
+            onPointerDown={startPointerGesture}
+            onPointerMove={updatePointerGesture}
+            onPointerUp={finishPointerGesture}
+            onPointerCancel={cancelPointerGesture}
+            onClickCapture={(event) => {
+              if (!suppressPointerClickRef.current || event.detail === 0) return
+              suppressPointerClickRef.current = false
+              event.preventDefault()
+              event.stopPropagation()
+            }}
           >
-            {state.result.deck.card_order.length > 1 && (
+            {previousCard && (
               <button
                 type="button"
-                className="card-navigation"
+                className="card-preview"
                 aria-label="Previous card"
                 onClick={() => navigate(-1)}
               >
-                ‹
+                {unavailablePreviewIds.has(previousCard.card_id) ? (
+                  <span className="card-preview-placeholder" aria-hidden="true">!</span>
+                ) : (
+                  <img
+                    className="card-preview-image"
+                    src={new URL(previousCard.image, document.baseURI).href}
+                    alt=""
+                    aria-hidden="true"
+                    draggable={false}
+                    onError={() => {
+                      setUnavailablePreviewIds((current) =>
+                        new Set(current).add(previousCard.card_id),
+                      )
+                    }}
+                  />
+                )}
               </button>
             )}
             <button
@@ -289,6 +399,7 @@ function App({ deckUrl, language }: AppProps = {}) {
                   className="card-image"
                   src={new URL(state.currentCard.image, document.baseURI).href}
                   alt="Picture card"
+                  draggable={false}
                   hidden={state.face !== 'image'}
                   onError={() => {
                     reportImageFailure(state.currentCard)
@@ -310,14 +421,29 @@ function App({ deckUrl, language }: AppProps = {}) {
                 {state.currentCard.target_word}
               </div>
             </button>
-            {state.result.deck.card_order.length > 1 && (
+            {nextCard && (
               <button
                 type="button"
-                className="card-navigation"
+                className="card-preview"
                 aria-label="Next card"
                 onClick={() => navigate(1)}
               >
-                ›
+                {unavailablePreviewIds.has(nextCard.card_id) ? (
+                  <span className="card-preview-placeholder" aria-hidden="true">!</span>
+                ) : (
+                  <img
+                    className="card-preview-image"
+                    src={new URL(nextCard.image, document.baseURI).href}
+                    alt=""
+                    aria-hidden="true"
+                    draggable={false}
+                    onError={() => {
+                      setUnavailablePreviewIds((current) =>
+                        new Set(current).add(nextCard.card_id),
+                      )
+                    }}
+                  />
+                )}
               </button>
             )}
             <div className="audio-controls">
@@ -364,6 +490,9 @@ function App({ deckUrl, language }: AppProps = {}) {
           </div>
           <p className="load-status" role="status">
             {state.result.deck.cards.length} cards ready.
+            <span className="visually-hidden">
+              Card {currentIndex + 1} of {cardCount}, {state.face} side.
+            </span>
           </p>
         </>
       )}
