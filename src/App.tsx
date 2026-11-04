@@ -5,6 +5,7 @@ import {
   createAudioController,
   type AudioController,
 } from './audio/audioController'
+import type { Flashcard } from './data/deck'
 import { DeckLoadError, loadDeck, type LoadedDeck } from './data/loadDeck'
 import {
   createProgressStorageKey,
@@ -23,6 +24,7 @@ type LoadState =
   | {
       status: 'ready'
       result: LoadedDeck
+      currentCard: Flashcard
       imageAvailable: boolean
       face: 'image' | 'word'
       audioStatus: 'idle' | 'playing' | 'unavailable'
@@ -30,12 +32,19 @@ type LoadState =
     }
   | { status: 'unavailable' }
 
-function reportImageFailure(result: LoadedDeck) {
+function reportImageFailure(card: Flashcard) {
   console.error('Flashcard image unavailable.', {
     category: 'image',
-    cardId: result.initialCard.card_id,
-    asset: result.initialCard.image,
+    cardId: card.card_id,
+    asset: card.image,
   })
+}
+
+function getOrderedCard(deck: LoadedDeck['deck'], index: number): Flashcard {
+  const cardId = deck.card_order[index]
+  const card = deck.cards.find(({ card_id }) => card_id === cardId)
+  if (!card) throw new Error(`Ordered card "${cardId}" is missing from the deck.`)
+  return card
 }
 
 function App({ deckUrl, language }: AppProps = {}) {
@@ -79,10 +88,11 @@ function App({ deckUrl, language }: AppProps = {}) {
           discardSavedProgress(progressKey)
         }
 
-        if (!result.initialImageAvailable) reportImageFailure(result)
+        if (!result.initialImageAvailable) reportImageFailure(result.initialCard)
         setState({
           status: 'ready',
           result,
+          currentCard: result.initialCard,
           imageAvailable: result.initialImageAvailable,
           face: validSavedProgress?.face ?? 'image',
           audioStatus: 'idle',
@@ -179,9 +189,10 @@ function App({ deckUrl, language }: AppProps = {}) {
 
   function toggleFace() {
     if (state.status !== 'ready') return
+    const card = state.currentCard
 
     if (state.face === 'word') {
-      saveProgress(state.progressKey, state.result.initialCard.card_id, 'image')
+      saveProgress(state.progressKey, card.card_id, 'image')
       audioRequestIdRef.current += 1
       audioControllerRef.current?.stop()
       setState((current) =>
@@ -196,7 +207,6 @@ function App({ deckUrl, language }: AppProps = {}) {
       return
     }
 
-    const card = state.result.initialCard
     saveProgress(state.progressKey, card.card_id, 'word')
     setState({
       ...state,
@@ -204,6 +214,31 @@ function App({ deckUrl, language }: AppProps = {}) {
       audioStatus: state.audioStatus === 'playing' ? 'idle' : state.audioStatus,
     })
     playPronunciation(card)
+  }
+
+  function navigate(direction: -1 | 1) {
+    if (state.status !== 'ready') return
+
+    const cardCount = state.result.deck.card_order.length
+    if (cardCount < 2) return
+
+    const currentIndex = state.result.deck.card_order.indexOf(state.currentCard.card_id)
+    const nextIndex = (currentIndex + direction + cardCount) % cardCount
+    const nextCard = getOrderedCard(state.result.deck, nextIndex)
+    audioRequestIdRef.current += 1
+    audioControllerRef.current?.stop()
+    saveProgress(state.progressKey, nextCard.card_id, 'image')
+    setState((current) =>
+      current.status === 'ready'
+        ? {
+            ...current,
+            currentCard: nextCard,
+            imageAvailable: true,
+            face: 'image',
+            audioStatus: 'idle',
+          }
+        : current,
+    )
   }
 
   return (
@@ -224,7 +259,23 @@ function App({ deckUrl, language }: AppProps = {}) {
       )}
       {state.status === 'ready' && (
         <>
-          <div className="card-stage">
+          <div
+            className={state.result.deck.card_order.length > 1
+              ? 'card-stage card-stage-navigable'
+              : 'card-stage'}
+            role="group"
+            aria-label="Flashcard carousel"
+          >
+            {state.result.deck.card_order.length > 1 && (
+              <button
+                type="button"
+                className="card-navigation"
+                aria-label="Previous card"
+                onClick={() => navigate(-1)}
+              >
+                ‹
+              </button>
+            )}
             <button
               type="button"
               className="card-box"
@@ -234,14 +285,16 @@ function App({ deckUrl, language }: AppProps = {}) {
             >
               {state.imageAvailable ? (
                 <img
+                  key={state.currentCard.card_id}
                   className="card-image"
-                  src={new URL(state.result.initialCard.image, document.baseURI).href}
+                  src={new URL(state.currentCard.image, document.baseURI).href}
                   alt="Picture card"
                   hidden={state.face !== 'image'}
                   onError={() => {
-                    reportImageFailure(state.result)
+                    reportImageFailure(state.currentCard)
                     setState((current) =>
-                      current.status === 'ready'
+                      current.status === 'ready' &&
+                      current.currentCard.card_id === state.currentCard.card_id
                         ? { ...current, imageAvailable: false }
                         : current,
                     )
@@ -254,9 +307,19 @@ function App({ deckUrl, language }: AppProps = {}) {
                 </div>
               )}
               <div className="card-word" hidden={state.face !== 'word'}>
-                {state.result.initialCard.target_word}
+                {state.currentCard.target_word}
               </div>
             </button>
+            {state.result.deck.card_order.length > 1 && (
+              <button
+                type="button"
+                className="card-navigation"
+                aria-label="Next card"
+                onClick={() => navigate(1)}
+              >
+                ›
+              </button>
+            )}
             <div className="audio-controls">
               {state.face === 'word' && (
                 <>
@@ -267,7 +330,7 @@ function App({ deckUrl, language }: AppProps = {}) {
                     aria-label={state.audioStatus === 'unavailable' ? 'Retry word audio' : 'Play word again'}
                     onClick={(event) => {
                       event.stopPropagation()
-                      playPronunciation(state.result.initialCard)
+                      playPronunciation(state.currentCard)
                     }}
                   >
                     <span className="audio-replay-icon" aria-hidden="true">

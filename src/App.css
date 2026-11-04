@@ -28,6 +28,38 @@ h1 {
   width: min(100%, 32rem);
 }
 
+.card-stage-navigable {
+  grid-template-columns: 3rem minmax(0, 1fr) 3rem;
+  align-items: center;
+}
+
+.card-stage-navigable .card-box {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.card-stage-navigable .audio-controls {
+  grid-column: 1 / -1;
+}
+
+.card-navigation {
+  display: grid;
+  width: 3rem;
+  min-width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border: 2px solid #31584e;
+  border-radius: 0.75rem;
+  background: #fffefa;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .card-box {
   box-sizing: border-box;
   display: grid;
@@ -158,6 +190,7 @@ h1 {
 }
 
 .card-box:focus-visible,
+.card-navigation:focus-visible,
 .audio-replay:focus-visible {
   outline: 3px solid #9a5b00;
   outline-offset: 3px;

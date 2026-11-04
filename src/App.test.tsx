@@ -1,6 +1,27 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import type { Flashcard } from './data/deck'
+
+function stubDeck(cards: Flashcard[], cardOrder = cards.map(({ card_id }) => card_id)) {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify({
+      schema_version: 1,
+      language: 'english',
+      cards,
+      card_order: cardOrder,
+    }),
+  }))
+  vi.stubGlobal('Image', class {
+    onload: (() => void) | null = null
+    onerror: (() => void) | null = null
+    set src(value: string) {
+      if (value) queueMicrotask(() => this.onload?.())
+    }
+  })
+}
 
 describe('App', () => {
   afterEach(() => {
@@ -126,6 +147,146 @@ describe('App', () => {
     expect(wordFace).toHaveAttribute('hidden')
     expect(wordFace).not.toBeVisible()
     expect(screen.getByRole('heading', { name: 'Flashcards', level: 1 })).toBeVisible()
+  })
+
+  it('navigates in deck order, wraps, resets the face, and stops audio', async () => {
+    class MockAudio {
+      src = ''
+      currentTime = 0
+      error: MediaError | null = null
+      onerror: (() => void) | null = null
+      onplaying: (() => void) | null = null
+      onended: (() => void) | null = null
+      readonly play = vi.fn(async () => {
+        this.onplaying?.()
+      })
+      readonly pause = vi.fn()
+      readonly load = vi.fn()
+      readonly removeAttribute = vi.fn((name: string) => {
+        if (name === 'src') this.src = ''
+      })
+    }
+
+    let audio: MockAudio | undefined
+    vi.stubGlobal('Audio', class extends MockAudio {
+      constructor() {
+        super()
+        audio = this
+      }
+    })
+    stubDeck([
+      {
+        card_id: 'mat',
+        target_word: 'mat',
+        image: 'lang/english/images/mat.png',
+        audio: 'lang/english/audios/mat.mp3',
+      },
+      {
+        card_id: 'sat',
+        target_word: 'sat',
+        image: 'lang/english/images/sat.png',
+        audio: 'lang/english/audios/sat.mp3',
+      },
+      {
+        card_id: 'cat',
+        target_word: 'cat',
+        image: 'lang/english/images/cat.png',
+        audio: 'lang/english/audios/cat.mp3',
+      },
+    ], ['sat', 'cat', 'mat'])
+    window.history.replaceState(
+      null,
+      '',
+      '/?cr_book=reader&cr_lang=english&cr_user_id=user-one',
+    )
+
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Show word' }))
+    expect(await screen.findByRole('button', { name: 'Play word again' })).toBeVisible()
+    expect(audio?.play).toHaveBeenCalledTimes(1)
+    const nextButton = screen.getByRole('button', { name: 'Next card' })
+    nextButton.focus()
+    fireEvent.click(nextButton)
+
+    expect(nextButton).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Show word' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
+    expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/cat.png'),
+    )
+    expect(audio?.src).toBe('')
+    expect(audio?.currentTime).toBe(0)
+    expect(audio?.play).toHaveBeenCalledTimes(1)
+    expect(
+      JSON.parse(localStorage.getItem('flashcards:progress:v1:reader:english:user-one') ?? 'null'),
+    ).toEqual({ schema_version: 1, card_id: 'cat', face: 'image' })
+
+    fireEvent.click(nextButton)
+    expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/mat.png'),
+    )
+    fireEvent.click(nextButton)
+    expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/sat.png'),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Previous card' }))
+    expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/mat.png'),
+    )
+  })
+
+  it('uses distinct previous and next actions for a two-card deck', async () => {
+    stubDeck([
+      {
+        card_id: 'sat',
+        target_word: 'sat',
+        image: 'lang/english/images/sat.png',
+        audio: 'lang/english/audios/sat.mp3',
+      },
+      {
+        card_id: 'mat',
+        target_word: 'mat',
+        image: 'lang/english/images/mat.png',
+        audio: 'lang/english/audios/mat.mp3',
+      },
+    ])
+
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+
+    const nextButton = await screen.findByRole('button', { name: 'Next card' })
+    const previousButton = screen.getByRole('button', { name: 'Previous card' })
+    fireEvent.click(nextButton)
+    expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/mat.png'),
+    )
+    fireEvent.click(previousButton)
+    expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('/lang/english/images/sat.png'),
+    )
+  })
+
+  it('omits arrow controls for a one-card deck', async () => {
+    stubDeck([{
+      card_id: 'sat',
+      target_word: 'sat',
+      image: 'lang/english/images/sat.png',
+      audio: 'lang/english/audios/sat.mp3',
+    }])
+
+    render(<App deckUrl="/lang/english/deck.json" language="english" />)
+
+    expect(await screen.findByRole('button', { name: 'Show word' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Previous card' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Next card' })).not.toBeInTheDocument()
   })
 
   it('shows an explicit image-failure state without making the deck unavailable', async () => {
