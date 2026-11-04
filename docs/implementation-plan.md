@@ -86,21 +86,3 @@ complete its separate Spec Update task before moving to unrelated work.
 Follow the metadata, versioning, and changelog requirements in
 [AGENTS.md](../AGENTS.md). Do not claim approval or update specification
 changelogs for unapproved exploratory work.
-
-## First implementation task
-
-Step 1 only: set up the runnable app and verification tooling.
-
-### Phase 1 Step 1 execution
-
-- Approved test tools: Vitest with React Testing Library, and Playwright.
-- Added React/TypeScript/Vite setup with Vite base `./`, plus focused component
-  and built-app browser smoke tests.
-- `npm run typecheck` — passed.
-- `npm run test` — passed (1 test).
-- `npm run build` — passed.
-- `npm run audit:dist` — passed (2 relative asset references; no source maps).
-- `npm run test:e2e` — passed (1 browser test; built app rendered with no
-  external requests).
-- Direct `file:` validation in target Curious Reader WebViews remains deferred
-  to the packaging phase; the browser smoke test is not a substitute for it.
