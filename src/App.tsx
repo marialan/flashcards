@@ -5,6 +5,8 @@ import {
 } from 'react'
 import type { Flashcard } from './data/deck'
 import type { LoadedDeck } from './data/loadDeck'
+import CardBox from './components/CardBox'
+import CardPreview from './components/CardPreview'
 import { useAudioController } from './hooks/useAudioController'
 import { useCardTransition } from './hooks/useCardTransition'
 import { useDeckLoading } from './hooks/useDeckLoading'
@@ -148,104 +150,43 @@ function App({ deckUrl, language }: AppProps = {}) {
             onClickCapture={pointerGesture.onClickCapture}
           >
             {previousCard && (
-              <button
-                type="button"
-                className="card-preview"
-                aria-label="Previous card"
-                onClick={() => navigate(-1)}
-              >
-                {unavailablePreviewIds.has(previousCard.card_id) ? (
-                  <span className="card-preview-placeholder" aria-hidden="true">!</span>
-                ) : (
-                  <img
-                    className="card-preview-image"
-                    src={new URL(previousCard.image, document.baseURI).href}
-                    alt=""
-                    aria-hidden="true"
-                    draggable={false}
-                    onError={() => {
-                      setUnavailablePreviewIds((current) =>
-                        new Set(current).add(previousCard.card_id),
-                      )
-                    }}
-                  />
-                )}
-              </button>
+              <CardPreview
+                card={previousCard}
+                direction="previous"
+                unavailable={unavailablePreviewIds.has(previousCard.card_id)}
+                onSelect={() => navigate(-1)}
+                onImageFailure={(cardId) => {
+                  setUnavailablePreviewIds((current) => new Set(current).add(cardId))
+                }}
+              />
             )}
-            <button
-              ref={attachCardBox}
-              type="button"
-              className="card-box"
-              aria-label={state.face === 'image' ? 'Show word' : 'Show picture'}
-              aria-pressed={state.face === 'word'}
-              data-transition={transition ?? undefined}
-              onClick={toggleFace}
-            >
-              <div
-                ref={cardFlipperRef}
-                className="card-flipper"
-                data-face={state.face}
-                data-transition={transition ?? undefined}
-              >
-                <div
-                  className="card-face card-image-face"
-                  aria-hidden={state.face !== 'image'}
-                >
-                  {state.imageAvailable ? (
-                    <img
-                      key={state.currentCard.card_id}
-                      className="card-image"
-                      src={new URL(state.currentCard.image, document.baseURI).href}
-                      alt="Picture card"
-                      draggable={false}
-                      onError={() => {
-                        reportImageFailure(state.currentCard)
-                        updateReadyState((current) =>
-                          current.currentCard.card_id === state.currentCard.card_id
-                            ? { ...current, imageAvailable: false }
-                            : current,
-                        )
-                      }}
-                    />
-                  ) : (
-                    <div className="image-unavailable" role="status">
-                      <span className="unavailable-icon" aria-hidden="true">!</span>
-                      <span>Image unavailable</span>
-                    </div>
-                  )}
-                </div>
-                <div
-                  className="card-face card-word"
-                  aria-hidden={state.face !== 'word'}
-                >
-                  {state.currentCard.target_word}
-                </div>
-              </div>
-            </button>
+            <CardBox
+              card={state.currentCard}
+              face={state.face}
+              imageAvailable={state.imageAvailable}
+              transition={transition}
+              buttonRef={attachCardBox}
+              flipperRef={cardFlipperRef}
+              onFlip={toggleFace}
+              onImageFailure={(card) => {
+                reportImageFailure(card)
+                updateReadyState((current) =>
+                  current.currentCard.card_id === card.card_id
+                    ? { ...current, imageAvailable: false }
+                    : current,
+                )
+              }}
+            />
             {nextCard && (
-              <button
-                type="button"
-                className="card-preview"
-                aria-label="Next card"
-                onClick={() => navigate(1)}
-              >
-                {unavailablePreviewIds.has(nextCard.card_id) ? (
-                  <span className="card-preview-placeholder" aria-hidden="true">!</span>
-                ) : (
-                  <img
-                    className="card-preview-image"
-                    src={new URL(nextCard.image, document.baseURI).href}
-                    alt=""
-                    aria-hidden="true"
-                    draggable={false}
-                    onError={() => {
-                      setUnavailablePreviewIds((current) =>
-                        new Set(current).add(nextCard.card_id),
-                      )
-                    }}
-                  />
-                )}
-              </button>
+              <CardPreview
+                card={nextCard}
+                direction="next"
+                unavailable={unavailablePreviewIds.has(nextCard.card_id)}
+                onSelect={() => navigate(1)}
+                onImageFailure={(cardId) => {
+                  setUnavailablePreviewIds((current) => new Set(current).add(cardId))
+                }}
+              />
             )}
             <div className="audio-controls">
               {state.face === 'word' && (
