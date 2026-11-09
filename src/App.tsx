@@ -5,8 +5,7 @@ import {
 } from 'react'
 import type { Flashcard } from './data/deck'
 import type { LoadedDeck } from './data/loadDeck'
-import CardBox from './components/CardBox'
-import CardPreview from './components/CardPreview'
+import CardStage from './components/CardStage'
 import LoadingState from './components/LoadingState'
 import UnavailableState from './components/UnavailableState'
 import { useAudioController } from './hooks/useAudioController'
@@ -128,99 +127,34 @@ function App({ deckUrl, language }: AppProps = {}) {
       {state.status === 'unavailable' && <UnavailableState onRetry={retry} />}
       {state.status === 'ready' && (
         <>
-          <div
-            className={cardCount > 1
-              ? 'card-stage card-stage-navigable'
-              : 'card-stage'}
-            role="group"
-            aria-label="Flashcard carousel"
-            onPointerDown={pointerGesture.onPointerDown}
-            onPointerMove={pointerGesture.onPointerMove}
-            onPointerUp={pointerGesture.onPointerUp}
-            onPointerCancel={pointerGesture.onPointerCancel}
-            onClickCapture={pointerGesture.onClickCapture}
-          >
-            {previousCard && (
-              <CardPreview
-                card={previousCard}
-                direction="previous"
-                unavailable={unavailablePreviewIds.has(previousCard.card_id)}
-                onSelect={() => navigate(-1)}
-                onImageFailure={(cardId) => {
-                  setUnavailablePreviewIds((current) => new Set(current).add(cardId))
-                }}
-              />
-            )}
-            <CardBox
-              card={state.currentCard}
-              face={state.face}
-              imageAvailable={state.imageAvailable}
-              transition={transition}
-              buttonRef={attachCardBox}
-              flipperRef={cardFlipperRef}
-              onFlip={toggleFace}
-              onImageFailure={(card) => {
-                reportImageFailure(card)
-                updateReadyState((current) =>
-                  current.currentCard.card_id === card.card_id
-                    ? { ...current, imageAvailable: false }
-                    : current,
-                )
-              }}
-            />
-            {nextCard && (
-              <CardPreview
-                card={nextCard}
-                direction="next"
-                unavailable={unavailablePreviewIds.has(nextCard.card_id)}
-                onSelect={() => navigate(1)}
-                onImageFailure={(cardId) => {
-                  setUnavailablePreviewIds((current) => new Set(current).add(cardId))
-                }}
-              />
-            )}
-            <div className="audio-controls">
-              {state.face === 'word' && (
-                <>
-                  <button
-                    type="button"
-                    className="audio-replay"
-                    data-playback-state={audioStatus}
-                    aria-label={audioStatus === 'unavailable' ? 'Retry word audio' : 'Play word again'}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      playPronunciation(state.currentCard)
-                    }}
-                  >
-                    <span className="audio-replay-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24">
-                        <path d="M3 9v6h4l5 4V5L7 9H3Z" />
-                        <path d="M16 9a5 5 0 0 1 0 6" />
-                        <path d="M18.5 6.5a9 9 0 0 1 0 11" />
-                      </svg>
-                      {audioStatus === 'unavailable' && (
-                        <span className="audio-warning">!</span>
-                      )}
-                    </span>
-                    <span>
-                      {audioStatus === 'playing'
-                        ? 'Playing'
-                        : audioStatus === 'unavailable'
-                          ? 'Retry audio'
-                          : 'Replay'}
-                    </span>
-                  </button>
-                  {audioStatus !== 'idle' && (
-                    <p className="audio-status" role="status">
-                      {audioStatus === 'unavailable'
-                        ? 'Audio unavailable'
-                        : 'Playing pronunciation'}
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
+          <CardStage
+            card={state.currentCard}
+            face={state.face}
+            imageAvailable={state.imageAvailable}
+            transition={transition}
+            audioStatus={audioStatus}
+            cardCount={cardCount}
+            previousCard={previousCard}
+            nextCard={nextCard}
+            unavailablePreviewIds={unavailablePreviewIds}
+            buttonRef={attachCardBox}
+            flipperRef={cardFlipperRef}
+            pointerGesture={pointerGesture}
+            onSelectCard={navigate}
+            onFlip={toggleFace}
+            onImageFailure={(card) => {
+              reportImageFailure(card)
+              updateReadyState((current) =>
+                current.currentCard.card_id === card.card_id
+                  ? { ...current, imageAvailable: false }
+                  : current,
+              )
+            }}
+            onPreviewImageFailure={(cardId) => {
+              setUnavailablePreviewIds((current) => new Set(current).add(cardId))
+            }}
+            onReplay={() => playPronunciation(state.currentCard)}
+          />
           <p className="load-status" role="status">
             {state.result.deck.cards.length} cards ready.
             <span className="visually-hidden">
