@@ -7,6 +7,8 @@ import type { Flashcard } from './data/deck'
 import type { LoadedDeck } from './data/loadDeck'
 import CardBox from './components/CardBox'
 import CardPreview from './components/CardPreview'
+import LoadingState from './components/LoadingState'
+import UnavailableState from './components/UnavailableState'
 import { useAudioController } from './hooks/useAudioController'
 import { useCardTransition } from './hooks/useCardTransition'
 import { useDeckLoading } from './hooks/useDeckLoading'
@@ -122,19 +124,8 @@ function App({ deckUrl, language }: AppProps = {}) {
   return (
     <main aria-busy={state.status === 'loading'}>
       <h1>Flashcards</h1>
-      {state.status === 'loading' && (
-        <p className="load-status" role="status">
-          <span className="loading-indicator" aria-hidden="true" />
-          Loading cards…
-        </p>
-      )}
-      {state.status === 'unavailable' && (
-        <section className="load-error" role="alert">
-          <span className="unavailable-icon" aria-hidden="true">!</span>
-          <p>Content is unavailable for this launch.</p>
-          <button type="button" onClick={retry}>Retry</button>
-        </section>
-      )}
+      {state.status === 'loading' && <LoadingState />}
+      {state.status === 'unavailable' && <UnavailableState onRetry={retry} />}
       {state.status === 'ready' && (
         <>
           <div
