@@ -1,8 +1,5 @@
 import './App.css'
-import {
-  useCallback,
-  useState,
-} from 'react'
+import { useCallback, useState } from 'react'
 import type { Flashcard } from './data/deck'
 import type { LoadedDeck } from './data/loadDeck'
 import CardStage from './components/CardStage'
@@ -59,8 +56,9 @@ function App({ deckUrl, language }: AppProps = {}) {
     onInitialImageFailure: reportImageFailure,
   })
 
-  function toggleFace() {
+  const toggleFace = useCallback(() => {
     if (state.status !== 'ready' || isTransitionLocked()) return
+
     const card = state.currentCard
     beginTransition('flip')
 
@@ -74,9 +72,17 @@ function App({ deckUrl, language }: AppProps = {}) {
     saveProgress(state.progressKey, card.card_id, 'word')
     updateReadyState((current) => ({ ...current, face: 'word' }))
     playPronunciation(card)
-  }
+  }, [
+    beginTransition,
+    isTransitionLocked,
+    playPronunciation,
+    saveProgress,
+    state,
+    stopAudio,
+    updateReadyState,
+  ])
 
-  function navigate(direction: -1 | 1) {
+  const navigate = useCallback((direction: -1 | 1) => {
     if (state.status !== 'ready' || isTransitionLocked()) return
 
     const cardCount = state.result.deck.card_order.length
@@ -94,17 +100,24 @@ function App({ deckUrl, language }: AppProps = {}) {
       imageAvailable: true,
       face: 'image',
     }))
-    }
+  }, [
+    beginTransition,
+    isTransitionLocked,
+    resetAudio,
+    saveProgress,
+    state,
+    updateReadyState,
+  ])
 
-    const canStartPointerGesture = useCallback(
-      () => state.status === 'ready' && !isTransitionLocked(),
-      [isTransitionLocked, state.status],
-    )
-    const pointerGesture = usePointerGesture({
-      status: state.status,
-      canStart: canStartPointerGesture,
-      onSwipe: navigate,
-    })
+  const canStartPointerGesture = useCallback(
+    () => state.status === 'ready' && !isTransitionLocked(),
+    [isTransitionLocked, state.status],
+  )
+  const pointerGesture = usePointerGesture({
+    status: state.status,
+    canStart: canStartPointerGesture,
+    onSwipe: navigate,
+  })
 
   const cardCount = state.status === 'ready' ? state.result.deck.card_order.length : 0
   const currentIndex =
@@ -119,6 +132,20 @@ function App({ deckUrl, language }: AppProps = {}) {
     state.status === 'ready' && cardCount > 1
       ? getOrderedCard(state.result.deck, (currentIndex + 1) % cardCount)
       : null
+  const handleImageFailure = useCallback((card: Flashcard) => {
+    reportImageFailure(card)
+    updateReadyState((current) =>
+      current.currentCard.card_id === card.card_id
+        ? { ...current, imageAvailable: false }
+        : current,
+    )
+  }, [updateReadyState])
+  const handlePreviewImageFailure = useCallback((cardId: string) => {
+    setUnavailablePreviewIds((current) => new Set(current).add(cardId))
+  }, [])
+  const replayPronunciation = useCallback(() => {
+    if (state.status === 'ready') playPronunciation(state.currentCard)
+  }, [playPronunciation, state])
 
   return (
     <main aria-busy={state.status === 'loading'}>
@@ -142,18 +169,9 @@ function App({ deckUrl, language }: AppProps = {}) {
             pointerGesture={pointerGesture}
             onSelectCard={navigate}
             onFlip={toggleFace}
-            onImageFailure={(card) => {
-              reportImageFailure(card)
-              updateReadyState((current) =>
-                current.currentCard.card_id === card.card_id
-                  ? { ...current, imageAvailable: false }
-                  : current,
-              )
-            }}
-            onPreviewImageFailure={(cardId) => {
-              setUnavailablePreviewIds((current) => new Set(current).add(cardId))
-            }}
-            onReplay={() => playPronunciation(state.currentCard)}
+            onImageFailure={handleImageFailure}
+            onPreviewImageFailure={handlePreviewImageFailure}
+            onReplay={replayPronunciation}
           />
           <p className="load-status" role="status">
             {state.result.deck.cards.length} cards ready.
