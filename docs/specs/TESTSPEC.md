@@ -3,13 +3,13 @@
 | | |
 | --- | --- |
 | **Title** | Flashcards - Test Specification |
-| **Status** | Approved - version 0.1.5; game checks remain planned, blocked, or not run as marked |
-| **Version** | 0.1.5 |
-| **Last updated** | 2026-11-02 |
+| **Status** | Approved - version 0.2.1; release checks remain blocked or outstanding as marked |
+| **Version** | 0.2.1 |
+| **Last updated** | 2026-11-04 |
 | **Owner/Author** | Maria Lande (with Copilot) |
 
 > Product authority: [PRD](PRD.md), approved version 1.1.1.
-> Behavior authority: [DEVSPEC](DEVSPEC.md), approved version 0.1.6.
+> Behavior authority: [DEVSPEC](DEVSPEC.md), approved version 0.3.0.
 > Presentation authority: [UISPEC](UISPEC.md), approved version 0.1.5.
 > Container checks derive from the [integration contract](../third-party-game-spec.md),
 > version 1.8, especially section 7. Tests verify those sources; they do not
@@ -19,11 +19,13 @@
 
 ## 1. Verification status and scope
 
-This is a test plan, not a test result. There is currently no implementation,
-dependency manifest, test runner, production build, or runnable fixture.
-All game cases below are **Not run**. Integration cases with unresolved
-decisions are also **Blocked** as identified below. No passing result or
-educational effectiveness is implied by creating this document.
+This document defines acceptance checks, not release sign-off. The repository
+now includes the React implementation, automated test runner, production build,
+and package fixtures. Automated checks cover code-level behavior and extracted
+archives; they do not establish actual Curious Reader WebView compatibility,
+approved content, reporting semantics, or educational effectiveness. DEC-008
+and release checks that depend on external approval or target devices remain
+blocked as identified below.
 
 Automated tests cover data/state/audio/interaction behavior and measurable UI
 targets. Manual checks cover actual offline WebViews, assistive technology,
@@ -96,9 +98,9 @@ request count, stop/play calls, or failure state rather than a screenshot alone.
 | TEST-012 | PRD-001, PRD-002, PRD-004; DEV-010; UI-004, UI-AC-001, UI-AC-006 | Reveal plays once; replay restarts, does not flip, and never overlaps sound. Restoring a saved word-side state makes no playback request; replay starts audio only after learner activation. No startup/image-navigation autoplay. Stale play/load after navigation cannot sound. Image reveal, navigation, hidden document, and unmount stop/reset; return does not autoplay. | Component + actual audio device |
 | TEST-013 | PRD-001, PRD-004, PRD-005; DEV-005, DEV-010; UI-004, UI-005, UI-AC-003 | Missing images show explicit placeholder, not a wrong image; failed audio retains word and retry. Retry failure stays explicit and success clears it. Navigation remains possible. Diagnostics exclude learner identity. | Component + browser |
 | TEST-014 | PRD-005, PRD-007; DEV-011 | Built `file:` entry runs in agreed WebViews with no external requests, root-relative assets, runtime CDN code, service workers, or shipped source maps; Vite base is relative. | Artifact audit + device |
-| TEST-015 | PRD-007; DEV-012 | Absent bridge makes zero post attempts; throwing bridge only warns locally. Approved envelope uses fresh UUID v4, exact field semantics, safe data, UTC time, approved stable game ID, and empty missing user ID. Session events omit options. UTF-8 byte size respects 64 KB; no batching/retry/network. | Unit + recording bridge |
+| TEST-015 | PRD-007; DEV-012 | Absent bridge makes zero post attempts; throwing bridge only warns locally. Approved envelope uses fresh UUID v4, exact field semantics, safe data, UTC time, the pre-CMS `sub_app_id` (currently `flashcard`, reconfirm before upload), and empty missing user ID. Session events omit options. UTF-8 byte size respects 64 KB; no batching/retry/network. | Blocked: reporting semantics and Curious Learning approval |
 | TEST-016 | PRD-007; DEV-012, DEC-008 | Each approved milestone emits exactly once; repeated flip/swipe/replay emits nothing by itself; approved summary operations are correct. Native logs receive events and replayed payload IDs deduplicate. | Blocked: reporting semantics and container access |
-| TEST-017 | PRD-005, PRD-006, PRD-007; DEV-013, DEC-007 | Approved archive layout/naming, root entry, separate language/core subtrees, and zero extraction overwrites. Engine plus each shipped pack plays offline; approved lookup selects the correct deck/core. | Blocked: layout and real artifacts |
+| TEST-017 | PRD-005, PRD-006, PRD-007; DEV-013, DEC-007 | Selected Layout A archives use `flashcard-core.zip` with root entry and no `lang/`, plus `flashcard-lang-english.zip` with only the English deck/audio; extraction has no overlaps, and the installed language lookup selects the correct deck. | Archive audit + Chromium `file:`; actual target WebView and approved release content remain outstanding |
 
 ## 5. UI and accessibility matrix
 
@@ -125,9 +127,9 @@ UI-001, UI-005; contract section 7.
 
 1. Build approved standalone output and audit emitted asset references, JSON,
    media formats, and source-map/SDK exclusions.
-2. Extract the approved engine/content archives into a clean nested directory,
-   checking for overwrites and root `index.html`.
-3. Open the local entry with an installed language query in a plain browser,
+2. Extract `flashcard-core.zip` and `flashcard-lang-english.zip` into a clean
+   nested directory, checking for overwrites and root `index.html`.
+3. Open the local entry with `cr_lang=english` in Chromium with network blocked,
    then repeat inside the agreed actual container WebViews.
 4. Disable network before launch. Time launch to playable; limit is 10 seconds
    on the valid fixture. No attempted external calls or `NETGUARD_BLOCK` entries
@@ -140,9 +142,10 @@ UI-001, UI-005; contract section 7.
 7. With Curious Learning, verify offline event storage, payload deduplication,
    and later synchronization. The game itself must perform no network sync.
 
-**Blocked portions:** archive checks require DEC-007; milestone/native checks
-require DEC-008 and container-team access. Verify persistence in the target
-WebViews; a browser reload alone does not establish app-restart behavior.
+**Blocked portions:** target-WebView and app-restart verification require the
+device/container matrix and access; milestone/native checks require DEC-008 and
+container-team access. A browser file-origin check does not establish actual
+container compatibility or app-restart behavior.
 
 ## 7. Content, usability, and learning evidence
 
@@ -219,6 +222,8 @@ task may validate TEST-029 without claiming any game case passed.
 
 ## Change Log
 
+2026-11-04 — Maria Lande (with Copilot) — Clarified that `flashcard` is the current pre-CMS reporting identifier and must be reconfirmed before upload.
+2026-11-04 — Maria Lande (with Copilot) — Added the resolved Layout A package paths and executable archive/file-origin verification while retaining external release blockers.
 2026-11-02 — Maria Lande (with Copilot) — Retargeted small-deck and progress-restoration tests to separate UI acceptance scenarios.
 2026-11-02 — Maria Lande (with Copilot) — Added localStorage persistence and cross-user verification for restored card position and side.
 2026-10-28 — Maria Lande (with Copilot) — Created the initial test-specification draft with traceable behavior and UI checks, offline/container protocols, fixtures, and explicit execution blockers.

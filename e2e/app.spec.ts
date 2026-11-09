@@ -185,6 +185,7 @@ test('fits the card shell at the specified viewport sizes', async ({ page }) => 
 
 test('rotates the bordered card surface together with its content', async ({ page }) => {
   await page.goto('/')
+  await expect(page.getByRole('alert')).toBeVisible()
   await page.evaluate(() => {
     const main = document.querySelector('main')
     if (!main) throw new Error('The activity shell is unavailable.')
@@ -199,7 +200,7 @@ test('rotates the bordered card surface together with its content', async ({ pag
     imageFace.className = 'card-face card-image-face'
     const image = document.createElement('img')
     image.className = 'card-image'
-    image.src = './lang/english/images/cat.png'
+    image.src = './assets/images/cat.png'
     image.alt = 'Picture card'
     imageFace.append(image)
     const wordFace = document.createElement('div')
@@ -388,7 +389,6 @@ test('animates flips and slides for 200 ms and removes motion when requested', a
 })
 
 test('rejects a deck redirect without requesting its destination', async ({ page }) => {
-  // Serve the real loader in isolation while production content lookup remains unwired.
   for (const name of ['loadDeck', 'deck']) {
     const source = await readFile(resolve('src', 'data', `${name}.ts`), 'utf8')
     await page.route(`**/__test__/${name}`, (route) =>
@@ -440,7 +440,7 @@ test('restores progress after reload and isolates it by launch identity', async 
     saveProgress(key, 'mat', 'word')
     return key
   })
-  expect(saved).toBe('flashcards:progress:v1:reader:english:user-one')
+  expect(saved).toBe('flashcards:progress:v1:english:user-one')
 
   await page.reload()
   const restored = await page.evaluate(async () => {

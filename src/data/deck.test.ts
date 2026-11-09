@@ -15,7 +15,7 @@ function card(cardId: string, targetWord = cardId) {
   return {
     card_id: cardId,
     target_word: targetWord,
-    image: `lang/english/images/${cardId}.png`,
+    image: `assets/images/${cardId}.png`,
     audio: `lang/english/audios/${cardId}.mp3`,
   }
 }
@@ -37,9 +37,9 @@ describe('flashcard deck contract', () => {
     expect(deck.cards.map(({ target_word }) => target_word)).toEqual(['sat', 'mat', 'cat'])
     expect(deck.cards.map(({ card_id }) => card_id)).toEqual(deck.card_order)
     expect(deck.cards.map(({ image, audio }) => [image, audio])).toEqual([
-      ['lang/english/images/sat.png', 'lang/english/audios/sat.mp3'],
-      ['lang/english/images/mat.png', 'lang/english/audios/mat.mp3'],
-      ['lang/english/images/cat.png', 'lang/english/audios/cat.mp3'],
+      ['assets/images/sat.png', 'lang/english/audios/sat.mp3'],
+      ['assets/images/mat.png', 'lang/english/audios/mat.mp3'],
+      ['assets/images/cat.png', 'lang/english/audios/cat.mp3'],
     ])
   })
 
@@ -82,12 +82,12 @@ describe('flashcard deck contract', () => {
   it.each([
     'https://example.test/image.png',
     '//example.test/image.png',
-    '/lang/english/images/one.png',
+    '/assets/images/one.png',
     'lang\\english\\images\\one.png',
-    'lang/english/images/../one.png',
-    'lang/english/images/%2e%2e/one.png',
-    'lang/english/images/one.png?version=1',
-    'lang/english/images/one.png#fragment',
+    'assets/images/../one.png',
+    'assets/images/%2e%2e/one.png',
+    'assets/images/one.png?version=1',
+    'assets/images/one.png#fragment',
   ])('rejects unsafe image path %s', (image) => {
     const deck = validDeck()
     deck.cards[0].image = image
@@ -97,7 +97,7 @@ describe('flashcard deck contract', () => {
 
   it('rejects unsupported extensions and audio outside the selected language pack', () => {
     const wrongExtension = validDeck()
-    wrongExtension.cards[0].image = 'lang/english/images/one.gif'
+    wrongExtension.cards[0].image = 'assets/images/one.gif'
 
     const wrongAudioLocation = validDeck()
     wrongAudioLocation.cards[0].audio = 'lang/other/audios/one.mp3'
@@ -111,7 +111,7 @@ describe('flashcard deck contract', () => {
   it('confirms supplied PNG and MP3 files exist and match their declared formats', async () => {
     for (const cardId of ['sat', 'mat', 'cat']) {
       const image = await readFile(
-        resolve(publicRoot, 'lang', 'english', 'images', `${cardId}.png`),
+        resolve(publicRoot, 'assets', 'images', `${cardId}.png`),
       )
       const audio = await readFile(
         resolve(publicRoot, 'lang', 'english', 'audios', `${cardId}.mp3`),

@@ -1,0 +1,6 @@
+{
+  "layout": "A",
+  "engineSlug": "flashcard",
+  "subAppId": "flashcard",
+  "languages": ["english"]
+}

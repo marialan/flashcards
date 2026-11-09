@@ -27,7 +27,7 @@ function createCards(...cardIds: string[]): Flashcard[] {
   return cardIds.map((cardId) => ({
     card_id: cardId,
     target_word: cardId,
-    image: `lang/english/images/${cardId}.png`,
+    image: `assets/images/${cardId}.png`,
     audio: `lang/english/audios/${cardId}.mp3`,
   }))
 }
@@ -104,7 +104,7 @@ describe('App', () => {
             cards: [{
               card_id: 'sat',
               target_word: 'sat',
-              image: 'lang/english/images/sat.png',
+              image: 'assets/images/sat.png',
               audio: 'lang/english/audios/sat.mp3',
             }],
             card_order: ['sat'],
@@ -159,13 +159,13 @@ describe('App', () => {
             {
               card_id: 'mat',
               target_word: 'mat',
-              image: 'lang/english/images/mat.png',
+              image: 'assets/images/mat.png',
               audio: 'lang/english/audios/mat.mp3',
             },
             {
               card_id: 'sat',
               target_word: 'Café extraordinarilylongword',
-              image: 'lang/english/images/sat.png',
+              image: 'assets/images/sat.png',
               audio: 'lang/english/audios/sat.mp3',
             },
           ],
@@ -187,7 +187,7 @@ describe('App', () => {
     const image = screen.getByRole('img', { name: 'Picture card' })
     expect(image).toHaveAttribute(
       'src',
-      new URL('lang/english/images/sat.png', document.baseURI).href,
+      new URL('assets/images/sat.png', document.baseURI).href,
     )
     expect(image).toHaveClass('card-image')
     const wordFace = screen.getByText('Café extraordinarilylongword')
@@ -225,26 +225,26 @@ describe('App', () => {
       {
         card_id: 'mat',
         target_word: 'mat',
-        image: 'lang/english/images/mat.png',
+        image: 'assets/images/mat.png',
         audio: 'lang/english/audios/mat.mp3',
       },
       {
         card_id: 'sat',
         target_word: 'sat',
-        image: 'lang/english/images/sat.png',
+        image: 'assets/images/sat.png',
         audio: 'lang/english/audios/sat.mp3',
       },
       {
         card_id: 'cat',
         target_word: 'cat',
-        image: 'lang/english/images/cat.png',
+        image: 'assets/images/cat.png',
         audio: 'lang/english/audios/cat.mp3',
       },
     ], ['sat', 'cat', 'mat'])
     window.history.replaceState(
       null,
       '',
-      '/?cr_book=reader&cr_lang=english&cr_user_id=user-one',
+      '/?cr_lang=english&cr_user_id=user-one',
     )
 
     render(<App deckUrl="/lang/english/deck.json" language="english" />)
@@ -265,32 +265,32 @@ describe('App', () => {
     )
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/cat.png'),
+      expect.stringContaining('/assets/images/cat.png'),
     )
     expect(audio?.src).toBe('')
     expect(audio?.currentTime).toBe(0)
     expect(audio?.play).toHaveBeenCalledTimes(1)
     expect(
-      JSON.parse(localStorage.getItem('flashcards:progress:v1:reader:english:user-one') ?? 'null'),
+      JSON.parse(localStorage.getItem('flashcards:progress:v1:english:user-one') ?? 'null'),
     ).toEqual({ schema_version: 1, card_id: 'cat', face: 'image' })
 
     fireEvent.click(nextButton)
     completeVisualTransition()
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/mat.png'),
+      expect.stringContaining('/assets/images/mat.png'),
     )
     fireEvent.click(nextButton)
     completeVisualTransition()
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/sat.png'),
+      expect.stringContaining('/assets/images/sat.png'),
     )
     fireEvent.click(screen.getByRole('button', { name: 'Previous card' }))
     completeVisualTransition()
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/mat.png'),
+      expect.stringContaining('/assets/images/mat.png'),
     )
   })
 
@@ -299,13 +299,13 @@ describe('App', () => {
       {
         card_id: 'sat',
         target_word: 'sat',
-        image: 'lang/english/images/sat.png',
+        image: 'assets/images/sat.png',
         audio: 'lang/english/audios/sat.mp3',
       },
       {
         card_id: 'mat',
         target_word: 'mat',
-        image: 'lang/english/images/mat.png',
+        image: 'assets/images/mat.png',
         audio: 'lang/english/audios/mat.mp3',
       },
     ])
@@ -318,13 +318,13 @@ describe('App', () => {
     completeVisualTransition()
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/mat.png'),
+      expect.stringContaining('/assets/images/mat.png'),
     )
     fireEvent.click(previousButton)
     completeVisualTransition()
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/sat.png'),
+      expect.stringContaining('/assets/images/sat.png'),
     )
   })
 
@@ -337,11 +337,11 @@ describe('App', () => {
     const nextButton = screen.getByRole('button', { name: 'Next card' })
     expect(previousButton.querySelector('img')).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/cat.png'),
+      expect.stringContaining('/assets/images/cat.png'),
     )
     expect(nextButton.querySelector('img')).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/mat.png'),
+      expect.stringContaining('/assets/images/mat.png'),
     )
     expect(previousButton.querySelector('img')).toHaveAttribute('aria-hidden', 'true')
     expect(nextButton.querySelector('img')).toHaveAttribute('aria-hidden', 'true')
@@ -355,7 +355,7 @@ describe('App', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Card 2 of 3, image side.')
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/mat.png'),
+      expect.stringContaining('/assets/images/mat.png'),
     )
   })
 
@@ -393,7 +393,7 @@ describe('App', () => {
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
       expect.stringContaining(
-        shouldNavigate ? '/lang/english/images/mat.png' : '/lang/english/images/sat.png',
+        shouldNavigate ? '/assets/images/mat.png' : '/assets/images/sat.png',
       ),
     )
   })
@@ -428,19 +428,19 @@ describe('App', () => {
     completeVisualTransition()
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/mat.png'),
+      expect.stringContaining('/assets/images/mat.png'),
     )
 
     sendGesture(2, 111, 100)
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/mat.png'),
+      expect.stringContaining('/assets/images/mat.png'),
     )
 
     sendGesture(3, 140, 140)
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/mat.png'),
+      expect.stringContaining('/assets/images/mat.png'),
     )
   })
 
@@ -479,7 +479,7 @@ describe('App', () => {
     stubDeck([{
       card_id: 'sat',
       target_word: 'sat',
-      image: 'lang/english/images/sat.png',
+      image: 'assets/images/sat.png',
       audio: 'lang/english/audios/sat.mp3',
     }])
 
@@ -540,7 +540,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next card' }))
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/mat.png'),
+      expect.stringContaining('/assets/images/mat.png'),
     )
 
     const card = screen.getByRole('button', { name: 'Show word' })
@@ -550,7 +550,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next card' }))
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/cat.png'),
+      expect.stringContaining('/assets/images/cat.png'),
     )
   })
 
@@ -586,7 +586,7 @@ describe('App', () => {
 
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/cat.png'),
+      expect.stringContaining('/assets/images/cat.png'),
     )
     expect(
       screen.getByRole('button', { name: 'Show word' }),
@@ -604,7 +604,7 @@ describe('App', () => {
           cards: [{
             card_id: 'sat',
             target_word: 'sat',
-            image: 'lang/english/images/sat.png',
+            image: 'assets/images/sat.png',
             audio: 'lang/english/audios/sat.mp3',
           }],
           card_order: ['sat'],
@@ -628,7 +628,7 @@ describe('App', () => {
     expect(errorSpy).toHaveBeenCalledWith('Flashcard image unavailable.', {
       category: 'image',
       cardId: 'sat',
-      asset: 'lang/english/images/sat.png',
+      asset: 'assets/images/sat.png',
     })
   })
 
@@ -636,10 +636,10 @@ describe('App', () => {
     window.history.replaceState(
       null,
       '',
-      '/?cr_book=reader&cr_lang=english&cr_user_id=user-one',
+      '/?cr_lang=english&cr_user_id=user-one',
     )
     localStorage.setItem(
-      'flashcards:progress:v1:reader:english:user-one',
+      'flashcards:progress:v1:english:user-one',
       JSON.stringify({ schema_version: 1, card_id: 'mat', face: 'word' }),
     )
     const audioConstructor = vi.fn()
@@ -659,13 +659,13 @@ describe('App', () => {
             {
               card_id: 'sat',
               target_word: 'sat',
-              image: 'lang/english/images/sat.png',
+              image: 'assets/images/sat.png',
               audio: 'lang/english/audios/sat.mp3',
             },
             {
               card_id: 'mat',
               target_word: 'mat',
-              image: 'lang/english/images/mat.png',
+              image: 'assets/images/mat.png',
               audio: 'lang/english/audios/mat.mp3',
             },
           ],
@@ -689,7 +689,7 @@ describe('App', () => {
     expect(screen.getByText('mat')).toBeVisible()
     expect(document.querySelector('.card-image')).toHaveAttribute(
       'src',
-      expect.stringContaining('/lang/english/images/mat.png'),
+      expect.stringContaining('/assets/images/mat.png'),
     )
     expect(audioConstructor).not.toHaveBeenCalled()
   })
@@ -698,7 +698,7 @@ describe('App', () => {
     window.history.replaceState(
       null,
       '',
-      '/?cr_book=reader&cr_lang=english&cr_user_id=user-one',
+      '/?cr_lang=english&cr_user_id=user-one',
     )
     const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
@@ -714,7 +714,7 @@ describe('App', () => {
           cards: [{
             card_id: 'sat',
             target_word: 'sat',
-            image: 'lang/english/images/sat.png',
+            image: 'assets/images/sat.png',
             audio: 'lang/english/audios/sat.mp3',
           }],
           card_order: ['sat'],
@@ -739,9 +739,9 @@ describe('App', () => {
     )
   })
 
-  it('does not restore progress from another user or shared core', async () => {
+  it('does not restore progress from another user', async () => {
     localStorage.setItem(
-      'flashcards:progress:v1:reader:english:user-one',
+      'flashcards:progress:v1:english:user-one',
       JSON.stringify({ schema_version: 1, card_id: 'sat', face: 'word' }),
     )
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
@@ -755,7 +755,7 @@ describe('App', () => {
           cards: [{
             card_id: 'sat',
             target_word: 'sat',
-            image: 'lang/english/images/sat.png',
+            image: 'assets/images/sat.png',
             audio: 'lang/english/audios/sat.mp3',
           }],
           card_order: ['sat'],
@@ -769,23 +769,7 @@ describe('App', () => {
       }
     })
 
-    window.history.replaceState(
-      null,
-      '',
-      '/?cr_book=reader&cr_lang=english&cr_user_id=user-two',
-    )
-    const otherUser = render(<App deckUrl="/lang/english/deck.json" language="english" />)
-    expect(await screen.findByRole('button', { name: 'Show word' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
-    otherUser.unmount()
-
-    window.history.replaceState(
-      null,
-      '',
-      '/?cr_book=other-reader&cr_lang=english&cr_user_id=user-one',
-    )
+    window.history.replaceState(null, '', '/?cr_lang=english&cr_user_id=user-two')
     render(<App deckUrl="/lang/english/deck.json" language="english" />)
     expect(await screen.findByRole('button', { name: 'Show word' })).toHaveAttribute(
       'aria-pressed',
@@ -794,7 +778,7 @@ describe('App', () => {
   })
 
   it('does not save progress when the container user is missing', async () => {
-    window.history.replaceState(null, '', '/?cr_book=reader&cr_lang=english')
+    window.history.replaceState(null, '', '/?cr_lang=english')
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -806,7 +790,7 @@ describe('App', () => {
           cards: [{
             card_id: 'sat',
             target_word: 'sat',
-            image: 'lang/english/images/sat.png',
+            image: 'assets/images/sat.png',
             audio: 'lang/english/audios/sat.mp3',
           }],
           card_order: ['sat'],
@@ -831,9 +815,9 @@ describe('App', () => {
     window.history.replaceState(
       null,
       '',
-      '/?cr_book=reader&cr_lang=english&cr_user_id=user-one',
+      '/?cr_lang=english&cr_user_id=user-one',
     )
-    const key = 'flashcards:progress:v1:reader:english:user-one'
+    const key = 'flashcards:progress:v1:english:user-one'
     localStorage.setItem(
       key,
       JSON.stringify({ schema_version: 1, card_id: 'missing', face: 'word' }),
@@ -849,7 +833,7 @@ describe('App', () => {
           cards: [{
             card_id: 'sat',
             target_word: 'sat',
-            image: 'lang/english/images/sat.png',
+            image: 'assets/images/sat.png',
             audio: 'lang/english/audios/sat.mp3',
           }],
           card_order: ['sat'],
@@ -883,7 +867,7 @@ describe('App', () => {
           cards: [{
             card_id: 'sat',
             target_word: 'sat',
-            image: 'lang/english/images/sat.png',
+            image: 'assets/images/sat.png',
             audio: 'lang/english/audios/sat.mp3',
           }],
           card_order: ['sat'],
@@ -938,7 +922,7 @@ describe('App', () => {
           cards: [{
             card_id: 'sat',
             target_word: 'sat',
-            image: 'lang/english/images/sat.png',
+            image: 'assets/images/sat.png',
             audio: 'lang/english/audios/sat.mp3',
           }],
           card_order: ['sat'],
@@ -1021,7 +1005,7 @@ describe('App', () => {
           cards: [{
             card_id: 'sat',
             target_word: 'sat',
-            image: 'lang/english/images/sat.png',
+            image: 'assets/images/sat.png',
             audio: 'lang/english/audios/sat.mp3',
           }],
           card_order: ['sat'],
@@ -1110,7 +1094,7 @@ describe('App', () => {
           cards: [{
             card_id: 'sat',
             target_word: 'sat',
-            image: 'lang/english/images/sat.png',
+            image: 'assets/images/sat.png',
             audio: 'lang/english/audios/sat.mp3',
           }],
           card_order: ['sat'],

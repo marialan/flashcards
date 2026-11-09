@@ -7,7 +7,7 @@ const deckSource = JSON.stringify({
   cards: [{
     card_id: 'sat',
     target_word: 'sat',
-    image: 'lang/english/images/sat.png',
+    image: 'assets/images/sat.png',
     audio: 'lang/english/audios/sat.mp3',
   }],
   card_order: ['sat'],

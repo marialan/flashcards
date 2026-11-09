@@ -13,6 +13,10 @@ if (assetReferences.length === 0) {
   throw new Error('The production HTML has no local asset references.')
 }
 
+if (html.includes('type="module"')) {
+  throw new Error('The standalone entry must not rely on JavaScript modules from file:.')
+}
+
 for (const reference of assetReferences) {
   if (!reference.startsWith('./') || reference.includes('\\')) {
     throw new Error(`Asset reference is not relative: ${reference}`)
@@ -30,6 +34,14 @@ for (const reference of assetReferences) {
   }
 
   await access(assetPath)
+}
+
+const scriptReferences = [...html.matchAll(/<script\b[^>]*src="([^"]+)"[^>]*>/g)].map(
+  ([, reference]) => reference,
+)
+
+if (scriptReferences.length !== 1) {
+  throw new Error(`The standalone entry must load one bundled script; found ${scriptReferences.length}.`)
 }
 
 const deckCount = await auditDeckAssets(distDirectory)

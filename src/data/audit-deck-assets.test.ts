@@ -8,10 +8,10 @@ import { auditDeckAssets } from '../../scripts/audit-deck-assets.mjs'
 
 const temporaryDirectories: string[] = []
 
-async function createArtifact(imagePath = 'lang/english/images/one.png') {
+async function createArtifact(imagePath = 'assets/images/one.png') {
   const root = await mkdtemp(resolve(tmpdir(), 'flashcards-audit-'))
   temporaryDirectories.push(root)
-  await mkdir(resolve(root, 'lang', 'english', 'images'), { recursive: true })
+  await mkdir(resolve(root, 'assets', 'images'), { recursive: true })
   await mkdir(resolve(root, 'lang', 'english', 'audios'), { recursive: true })
   await writeFile(
     resolve(root, 'lang', 'english', 'deck.json'),
@@ -30,7 +30,7 @@ async function createArtifact(imagePath = 'lang/english/images/one.png') {
     }),
   )
   await writeFile(
-    resolve(root, 'lang', 'english', 'images', 'one.png'),
+    resolve(root, 'assets', 'images', 'one.png'),
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
   )
   await writeFile(
@@ -53,7 +53,7 @@ describe('packaged deck media audit', () => {
   })
 
   it('fails when a referenced asset is missing', async () => {
-    const root = await createArtifact('lang/english/images/missing.png')
+    const root = await createArtifact('assets/images/missing.png')
 
     await expect(auditDeckAssets(root)).rejects.toThrow(/Missing image asset/)
   })
@@ -61,7 +61,7 @@ describe('packaged deck media audit', () => {
   it('fails when asset bytes do not match the declared extension', async () => {
     const root = await createArtifact()
     await writeFile(
-      resolve(root, 'lang', 'english', 'images', 'one.png'),
+      resolve(root, 'assets', 'images', 'one.png'),
       Buffer.from('not a PNG'),
     )
 

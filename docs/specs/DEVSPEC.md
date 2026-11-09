@@ -3,9 +3,9 @@
 | | |
 | --- | --- |
 | **Title** | Flashcards - Development Specification |
-| **Status** | Approved - version 0.2.0; provisional decisions and integration blockers remain recorded |
-| **Version** | 0.2.0 |
-| **Last updated** | 2026-11-02 |
+| **Status** | Approved - version 0.4.0; DEC-008 event semantics and release blockers remain recorded |
+| **Version** | 0.4.0 |
+| **Last updated** | 2026-11-04 |
 | **Owner/Author** | Maria Lande (with Copilot) |
 
 > Product authority: [PRD](PRD.md), approved version 1.1.1.
@@ -51,8 +51,8 @@ below are claimed to exist.
 | DEC-004 | Missing or unsupported `cr_lang` produces an explicit content-unavailable state, not language substitution. | Selected by Maria Lande, 2026-10-28 |
 | DEC-005 | Restore the last viewed card and face from localStorage across reloads and app restarts, scoped to the container user and content. | Selected by Maria Lande, 2026-11-02 |
 | DEC-006 | Final schema, gesture thresholds, failure recovery, and UI constants below. | Approved by Maria Lande, 2026-11-02 |
-| DEC-007 | Packaging Layout A or B, content lookup mapping, engine slug, and any core slug. | Blocking integration decision; confirm shared-content model with Curious Reader |
-| DEC-008 | Reporting milestone, event name, fields, aggregate policy, and stable `sub_app_id`. | Blocking reporting decision; agree with Curious Learning data team; no per-tap reporting |
+| DEC-007 | Packaging Layout A or B, content lookup mapping, engine slug, and any core slug. | Selected by Maria Lande, 2026-11-04: Layout A; engine slug `flashcard`; installed language `english`; no core tier |
+| DEC-008 | Reporting milestone, event name, fields, aggregate policy, and stable `sub_app_id`. | `sub_app_id` provisionally set to `flashcard` by Maria Lande, 2026-11-04 for pre-CMS testing; it may change before CMS upload. Milestones, event fields, and aggregate policy remain blocked pending Curious Learning data-team agreement; no per-tap reporting |
 | DEC-009 | Launch languages/deck, content rights/reviewer, device/WebView matrix, accessibility validation, and usability evaluation targets. | Required before release; still open in PRD |
 
 The contract requires game-state persistence in localStorage. DEC-005 aligns
@@ -155,19 +155,18 @@ permission to release incomplete content.
 ### DEV-003 - Launch selection (PRD-005, PRD-006, PRD-007)
 
 Read `cr_lang` and opaque `cr_user_id` from `window.location.search`.
-Select only an installed language from the approved mapping. Missing,
-unsupported, or ambiguously repeated `cr_lang` results in content-unavailable
-without requesting an arbitrary directory or substituting another language.
-If Layout B is approved, specify and validate `cr_book` and core lookup before
-implementing it. Do not invent learner identifiers; missing `cr_user_id` is
-represented by `""` for the bridge contract.
+Select only a language listed in the approved `container.config.json` mapping;
+the selected Layout A mapping installs `english` at
+`./lang/english/deck.json`. Missing, unsupported, or ambiguously repeated
+`cr_lang` results in content-unavailable without requesting an arbitrary
+directory or substituting another language. Layout A does not require `cr_book`.
+Do not invent learner identifiers; missing `cr_user_id` is represented by `""`
+for the bridge contract and disables per-user progress persistence.
 
 For local development only (`npm run dev`), launch the English test fixture at
-`./lang/english/deck.json` without requiring container query parameters. This
-explicit development context does not select production content, approve a
-launch language, or resolve DEC-007. Production builds, including built
-previews, retain the unavailable state until production lookup is implemented;
-they must not fall back to the development fixture.
+`./lang/english/deck.json` without requiring container query parameters.
+Production uses only the approved installed-language mapping and never falls
+back to the development fixture.
 
 ### DEV-004 - Offline loader and lifecycle (PRD-005)
 
@@ -287,9 +286,10 @@ Do not emit per flip, tap, frame, swipe, or replay.
 
 Follow contract sections 6.2-6.5: fresh UUID v4 per payload (pure-JS fallback
 when the supported crypto API is unavailable), opaque URL `cr_user_id` or `""`,
-approved stable lowercase `sub_app_id`, `payload_version: 1`, whitelisted
-collection, UTC ISO timestamp, and JSON-safe data. Include `type` and `lang`
-in session-event data. Never invent user/device IDs. The opaque container
+lowercase `sub_app_id` from `container.config.json` (currently `flashcard` for
+pre-CMS testing; reconfirm and freeze before upload), `payload_version: 1`,
+whitelisted collection, UTC ISO timestamp, and JSON-safe data. Include `type`
+and `lang` in session-event data. Never invent user/device IDs. The opaque container
 `cr_user_id` may scope local progress storage as specified by DEV-009; do not
 include it in the saved progress value or event `data`. Include it in the
 reporting envelope only as required by the contract, and never in diagnostics.
@@ -308,15 +308,15 @@ remain blocked until DEC-008 defines the milestone and payload semantics.
 
 ### DEV-013 - Packaging and content lookup (PRD-005, PRD-006, PRD-007)
 
-Follow contract section 5's content-based Layout A/B decision, not assumptions
-from the game name. Engine archive has root `index.html`, no wrapping folder
-and no `lang/`; language archives occupy separate language subtrees. Layout B
-also has a shared core tier and validated `cr_book`. Archives must merge without
-overwrites; language audio follows DEV-002.
-
-Before implementation of distribution, resolve DEC-007 and add the exact
-manifest/lookup, filename conventions, and extraction fixtures. Until then,
-no package is claimed container-ready and no permanent slug is reserved.
+Follow the approved Layout A mapping in `container.config.json`: engine slug
+`flashcard`, language `english`, and no core tier. Produce
+`flashcard-core.zip` with root `index.html`, runtime files, and shared
+`assets/`, but no `lang/`; produce `flashcard-lang-english.zip` with only
+`lang/english/deck.json` and referenced `lang/english/audios/`. The deck's
+shared image references resolve from the engine archive. Archives must merge
+without overwrites; language audio follows DEV-002. Validate paths and media
+before packaging. Successful local packaging does not replace approved content,
+target-WebView, reporting, or release verification.
 
 ## 9. Completion and change control
 
@@ -332,6 +332,8 @@ acceptance together; do not silently change them in code.
 
 ## Change Log
 
+2026-11-04 — Maria Lande (with Copilot) — Set the pre-CMS reporting identifier to `flashcard`, explicitly allowing revision before upload while leaving event semantics blocked.
+2026-11-04 — Maria Lande (with Copilot) — Resolved DEC-007 as Layout A with the flashcard engine slug, English language lookup, and separate engine/language archives.
 2026-11-02 — Maria Lande (with Copilot) — Approved automatic English fixture loading for local development only while preserving production launch selection and integration blockers.
 2026-11-02 — Maria Lande (with Copilot) — Replaced the no-persistence decision with per-user localStorage restoration across reloads and app restarts.
 2026-10-28 — Maria Lande (with Copilot) — Clarified that the complete target is delivered incrementally, with the single-card MVP preceding navigation and carousel work.

@@ -11,15 +11,12 @@ function reportProgressIssue(category: string) {
 export function createProgressStorageKey(search: string, language: string): string | null {
   const params = new URLSearchParams(search)
   const userIds = params.getAll('cr_user_id')
-  const bookSlugs = params.getAll('cr_book')
   const languages = params.getAll('cr_lang')
 
   if (
     userIds.length !== 1 ||
-    bookSlugs.length !== 1 ||
     languages.length !== 1 ||
     !userIds[0]?.trim() ||
-    !bookSlugs[0]?.trim() ||
     languages[0] !== language
   ) {
     reportProgressIssue('missing_or_invalid_launch_identity')
@@ -30,7 +27,6 @@ export function createProgressStorageKey(search: string, language: string): stri
     'flashcards',
     'progress',
     'v1',
-    encodeURIComponent(bookSlugs[0]),
     encodeURIComponent(languages[0]),
     encodeURIComponent(userIds[0]),
   ].join(':')

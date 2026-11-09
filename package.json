@@ -5,14 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/prepare-container-html.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "audit:dist": "node scripts/audit-dist.mjs",
-    "test:e2e": "npm run build && playwright test"
+    "audit:packages": "node scripts/audit-container-packages.mjs",
+    "package:container": "npm run build && node scripts/package-container.mjs",
+    "test:packaging": "node --test scripts/package-container.test.mjs",
+    "test:e2e": "npm run package:container && playwright test"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
