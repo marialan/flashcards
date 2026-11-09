@@ -6,13 +6,9 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
-import {
-  AudioPlaybackError,
-  createAudioController,
-  type AudioController,
-} from './audio/audioController'
 import type { Flashcard } from './data/deck'
 import { DeckLoadError, loadDeck, type LoadedDeck } from './data/loadDeck'
+import { useAudioController } from './hooks/useAudioController'
 import {
   createProgressStorageKey,
   discardSavedProgress,
@@ -33,7 +29,6 @@ type LoadState =
       currentCard: Flashcard
       imageAvailable: boolean
       face: 'image' | 'word'
-      audioStatus: 'idle' | 'playing' | 'unavailable'
       progressKey: string | null
       transition: VisualTransition | null
     }
@@ -66,9 +61,7 @@ function getOrderedCard(deck: LoadedDeck['deck'], index: number): Flashcard {
 function App({ deckUrl, language }: AppProps = {}) {
   const [attempt, setAttempt] = useState(0)
   const [state, setState] = useState<LoadState>({ status: 'loading' })
-  const audioControllerRef = useRef<AudioController | null>(null)
-  const audioRequestIdRef = useRef(0)
-  const audioCardIdRef = useRef<string | null>(null)
+  const { audioStatus, playPronunciation, resetAudio, stopAudio } = useAudioController()
   const pointerGestureRef = useRef<PointerGesture | null>(null)
   const suppressPointerClickRef = useRef(false)
   const transitionLockedRef = useRef(false)
@@ -84,8 +77,7 @@ function App({ deckUrl, language }: AppProps = {}) {
     const controller = new AbortController()
     let active = true
 
-    audioRequestIdRef.current += 1
-    audioControllerRef.current?.stop()
+    resetAudio()
     pointerGestureRef.current = null
     suppressPointerClickRef.current = false
     transitionLockedRef.current = false
@@ -130,7 +122,6 @@ function App({ deckUrl, language }: AppProps = {}) {
           currentCard: result.initialCard,
           imageAvailable: result.initialImageAvailable,
           face: validSavedProgress?.face ?? 'image',
-          audioStatus: 'idle',
           progressKey,
           transition: null,
         })
@@ -147,12 +138,10 @@ function App({ deckUrl, language }: AppProps = {}) {
       active = false
       controller.abort()
     }
-  }, [attempt, deckUrl, language])
+  }, [attempt, deckUrl, language, resetAudio])
 
   useEffect(
     () => () => {
-      audioRequestIdRef.current += 1
-      audioControllerRef.current?.dispose()
       transitionLockedRef.current = false
       visualTransitionRef.current = null
       if (transitionTimeoutRef.current !== null) {
@@ -164,68 +153,6 @@ function App({ deckUrl, language }: AppProps = {}) {
 
   function retry() {
     setAttempt((current) => current + 1)
-  }
-
-  function reportAudioFailure(error: AudioPlaybackError) {
-    console.error('Pronunciation audio unavailable.', {
-      category: error.category,
-      cardId: audioCardIdRef.current,
-      asset: error.asset,
-    })
-    setState((current) =>
-      current.status === 'ready'
-        ? { ...current, audioStatus: 'unavailable' }
-        : current,
-    )
-  }
-
-  function setAudioPlaybackStatus(status: 'idle' | 'playing') {
-    setState((current) => {
-      if (current.status !== 'ready') return current
-      if (status === 'idle' && current.audioStatus !== 'playing') return current
-      return { ...current, audioStatus: status }
-    })
-  }
-
-  function playPronunciation(card: LoadedDeck['initialCard']) {
-    const requestId = ++audioRequestIdRef.current
-    audioCardIdRef.current = card.card_id
-    audioControllerRef.current ??= createAudioController(
-      reportAudioFailure,
-      setAudioPlaybackStatus,
-    )
-    setState((current) =>
-      current.status === 'ready' && current.audioStatus === 'playing'
-        ? { ...current, audioStatus: 'idle' }
-        : current,
-    )
-
-    const asset = new URL(card.audio, document.baseURI).href
-    void audioControllerRef.current.play(asset).then(
-      () => {
-        if (requestId !== audioRequestIdRef.current) return
-        setState((current) =>
-          current.status === 'ready' && current.face === 'word'
-            ? { ...current, audioStatus: 'playing' }
-            : current,
-        )
-      },
-      (error: unknown) => {
-        if (error instanceof AudioPlaybackError) return
-
-        console.error('Pronunciation playback failed unexpectedly.', {
-          category: 'audio',
-          cardId: card.card_id,
-          asset,
-          error,
-        })
-        setState((current) =>
-          current.status === 'ready'
-            ? { ...current, audioStatus: 'unavailable' }
-            : current,
-        )
-      },
-    )
   }
 
   const finishVisualTransition = useCallback(() => {
@@ -319,16 +246,10 @@ function App({ deckUrl, language }: AppProps = {}) {
 
     if (state.face === 'word') {
       saveProgress(state.progressKey, card.card_id, 'image')
-      audioRequestIdRef.current += 1
-      audioControllerRef.current?.stop()
+      stopAudio()
       setState((current) =>
         current.status === 'ready'
-          ? {
-              ...current,
-              face: 'image',
-              audioStatus: current.audioStatus === 'playing' ? 'idle' : current.audioStatus,
-              transition,
-            }
+          ? { ...current, face: 'image', transition }
           : current,
       )
       return
@@ -338,7 +259,6 @@ function App({ deckUrl, language }: AppProps = {}) {
     setState({
       ...state,
       face: 'word',
-      audioStatus: state.audioStatus === 'playing' ? 'idle' : state.audioStatus,
       transition,
     })
     playPronunciation(card)
@@ -354,8 +274,7 @@ function App({ deckUrl, language }: AppProps = {}) {
     const nextIndex = (currentIndex + direction + cardCount) % cardCount
     const nextCard = getOrderedCard(state.result.deck, nextIndex)
     const transition = beginVisualTransition(direction > 0 ? 'next' : 'previous')
-    audioRequestIdRef.current += 1
-    audioControllerRef.current?.stop()
+    resetAudio()
     saveProgress(state.progressKey, nextCard.card_id, 'image')
     setState((current) =>
       current.status === 'ready'
@@ -364,7 +283,6 @@ function App({ deckUrl, language }: AppProps = {}) {
             currentCard: nextCard,
             imageAvailable: true,
             face: 'image',
-            audioStatus: 'idle',
             transition,
           }
         : current,
@@ -584,8 +502,8 @@ function App({ deckUrl, language }: AppProps = {}) {
                   <button
                     type="button"
                     className="audio-replay"
-                    data-playback-state={state.audioStatus}
-                    aria-label={state.audioStatus === 'unavailable' ? 'Retry word audio' : 'Play word again'}
+                    data-playback-state={audioStatus}
+                    aria-label={audioStatus === 'unavailable' ? 'Retry word audio' : 'Play word again'}
                     onClick={(event) => {
                       event.stopPropagation()
                       playPronunciation(state.currentCard)
@@ -597,21 +515,21 @@ function App({ deckUrl, language }: AppProps = {}) {
                         <path d="M16 9a5 5 0 0 1 0 6" />
                         <path d="M18.5 6.5a9 9 0 0 1 0 11" />
                       </svg>
-                      {state.audioStatus === 'unavailable' && (
+                      {audioStatus === 'unavailable' && (
                         <span className="audio-warning">!</span>
                       )}
                     </span>
                     <span>
-                      {state.audioStatus === 'playing'
+                      {audioStatus === 'playing'
                         ? 'Playing'
-                        : state.audioStatus === 'unavailable'
+                        : audioStatus === 'unavailable'
                           ? 'Retry audio'
                           : 'Replay'}
                     </span>
                   </button>
-                  {state.audioStatus !== 'idle' && (
+                  {audioStatus !== 'idle' && (
                     <p className="audio-status" role="status">
-                      {state.audioStatus === 'unavailable'
+                      {audioStatus === 'unavailable'
                         ? 'Audio unavailable'
                         : 'Playing pronunciation'}
                     </p>
