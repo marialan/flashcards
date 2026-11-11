@@ -1,3 +1,4 @@
+import './CardPreview.css'
 import type { Flashcard } from '../data/deck'
 
 interface CardPreviewProps {
@@ -16,11 +17,12 @@ function CardPreview({
   onImageFailure,
 }: CardPreviewProps) {
   const label = direction === 'previous' ? 'Previous card' : 'Next card'
+  const previewClass = direction === 'previous' ? 'card-preview-prev' : 'card-preview-next'
 
   return (
     <button
       type="button"
-      className="card-preview"
+      className={`card-preview ${previewClass}`}
       aria-label={label}
       onClick={onSelect}
     >

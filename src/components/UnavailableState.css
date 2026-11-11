@@ -1,0 +1,27 @@
+.load-error {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  margin: 0;
+  text-align: center;
+}
+
+.load-error p {
+  margin: 0;
+}
+
+.load-error button {
+  min-width: 7rem;
+  min-height: 2.75rem;
+  font: inherit;
+}
+
+.unavailable-icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  font-weight: 700;
+}

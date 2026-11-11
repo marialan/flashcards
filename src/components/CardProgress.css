@@ -1,0 +1,24 @@
+.card-progress {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.card-progress-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background-color: #d0ccc8;
+  transition: background-color 200ms ease-in-out;
+}
+
+.card-progress-dot[data-active='true'] {
+  background-color: #5a4a42;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-progress-dot {
+    transition: none;
+  }
+}

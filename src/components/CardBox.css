@@ -1,0 +1,153 @@
+.card-box {
+  box-sizing: border-box;
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  width: 100%;
+  max-width: min(20rem, 80vw);
+  height: min(25rem, 60svh);
+  aspect-ratio: 4 / 5;
+  min-height: 9rem;
+  place-items: center;
+  overflow: visible;
+  border: 0;
+  border-radius: 1.5rem;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  perspective: 1000px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card-box:focus-visible {
+  outline: 3px solid #9a5b00;
+  outline-offset: 3px;
+}
+
+.card-box[data-transition='next'] {
+  animation: card-slide-next 200ms ease-out both;
+}
+
+.card-box[data-transition='previous'] {
+  animation: card-slide-previous 200ms ease-out both;
+}
+
+.card-flipper {
+  position: relative;
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 200ms ease-in-out;
+}
+
+.card-flipper[data-face='word'] {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  box-sizing: border-box;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 12px solid white;
+  border-radius: 1.5rem;
+  background: #fffefa;
+  box-shadow: 0 0.5rem 1.5rem rgba(103, 76, 55, 0.42);
+  backface-visibility: hidden;
+}
+
+.card-image {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.card-word {
+  box-sizing: border-box;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  padding: 1rem;
+  font-size: clamp(2rem, 8vw, 3rem);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  transform: rotateY(180deg);
+}
+
+.image-unavailable {
+  display: grid;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  place-content: center;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.unavailable-icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  font-weight: 700;
+}
+
+@keyframes card-slide-next {
+  from {
+    transform: translateX(12%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes card-slide-previous {
+  from {
+    transform: translateX(-12%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-flipper,
+  .card-flipper[data-face='word'],
+  .card-word {
+    transform: none;
+  }
+
+  .card-flipper {
+    transition: none;
+  }
+
+  .card-flipper[data-face='image'] .card-word {
+    visibility: hidden;
+  }
+
+  .card-flipper[data-face='word'] .card-word {
+    visibility: visible;
+  }
+
+  .card-face {
+    backface-visibility: visible;
+  }
+
+  .card-box {
+    animation: none !important;
+  }
+}

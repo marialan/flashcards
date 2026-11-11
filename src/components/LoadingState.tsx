@@ -1,3 +1,5 @@
+import './LoadingState.css'
+
 function LoadingState() {
   return (
     <p className="load-status" role="status">

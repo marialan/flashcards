@@ -5,13 +5,37 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #263c36;
-  background: #fff8e9;
+  background: #fcf7dc 100%;
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+}
+
+.circle-left {
+    position: fixed;
+    width: 250px;
+    height: 250px;
+    border-radius: 50%;
+    background: #b9d9d0;
+    bottom: -100px;
+    left: -100px;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.circle-right {
+    position: fixed;
+    width: 250px;
+    height: 250px;
+    border-radius: 50%;
+    background: #e8c4a2;
+    top: -100px;
+    right: -100px;
+    pointer-events: none;
+    z-index: -1;
 }
 
 :focus-visible {

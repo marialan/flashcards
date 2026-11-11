@@ -1,3 +1,4 @@
+import './CardBox.css'
 import type { Ref, MouseEventHandler } from 'react'
 import type { Flashcard } from '../data/deck'
 import type { CardTransition } from '../hooks/useCardTransition'
@@ -27,7 +28,7 @@ function CardBox({
     <button
       ref={buttonRef}
       type="button"
-      className="card-box"
+      className="card-box card-main"
       aria-label={face === 'image' ? 'Show word' : 'Show picture'}
       aria-pressed={face === 'word'}
       data-transition={transition ?? undefined}
@@ -39,7 +40,7 @@ function CardBox({
         data-face={face}
         data-transition={transition ?? undefined}
       >
-        <div className="card-face card-image-face" aria-hidden={face !== 'image'}>
+        <div className="card-face" aria-hidden={face !== 'image'}>
           {imageAvailable ? (
             <img
               key={card.card_id}

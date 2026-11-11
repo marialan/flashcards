@@ -1,3 +1,4 @@
+import './CardStage.css'
 import type { Ref } from 'react'
 import type { Flashcard } from '../data/deck'
 import type { CardTransition } from '../hooks/useCardTransition'
@@ -58,32 +59,48 @@ function CardStage({
       onPointerCancel={pointerGesture.onPointerCancel}
       onClickCapture={pointerGesture.onClickCapture}
     >
-      {previousCard && (
-        <CardPreview
-          card={previousCard}
-          direction="previous"
-          unavailable={unavailablePreviewIds.has(previousCard.card_id)}
-          onSelect={() => onSelectCard(-1)}
-          onImageFailure={onPreviewImageFailure}
-        />
+      {cardCount > 1 && (
+        <div className="carousel-container">
+          {previousCard && (
+            <CardPreview
+              card={previousCard}
+              direction="previous"
+              unavailable={unavailablePreviewIds.has(previousCard.card_id)}
+              onSelect={() => onSelectCard(-1)}
+              onImageFailure={onPreviewImageFailure}
+            />
+          )}
+          <CardBox
+            card={card}
+            face={face}
+            imageAvailable={imageAvailable}
+            transition={transition}
+            buttonRef={buttonRef}
+            flipperRef={flipperRef}
+            onFlip={onFlip}
+            onImageFailure={onImageFailure}
+          />
+          {nextCard && (
+            <CardPreview
+              card={nextCard}
+              direction="next"
+              unavailable={unavailablePreviewIds.has(nextCard.card_id)}
+              onSelect={() => onSelectCard(1)}
+              onImageFailure={onPreviewImageFailure}
+            />
+          )}
+        </div>
       )}
-      <CardBox
-        card={card}
-        face={face}
-        imageAvailable={imageAvailable}
-        transition={transition}
-        buttonRef={buttonRef}
-        flipperRef={flipperRef}
-        onFlip={onFlip}
-        onImageFailure={onImageFailure}
-      />
-      {nextCard && (
-        <CardPreview
-          card={nextCard}
-          direction="next"
-          unavailable={unavailablePreviewIds.has(nextCard.card_id)}
-          onSelect={() => onSelectCard(1)}
-          onImageFailure={onPreviewImageFailure}
+      {cardCount === 1 && (
+        <CardBox
+          card={card}
+          face={face}
+          imageAvailable={imageAvailable}
+          transition={transition}
+          buttonRef={buttonRef}
+          flipperRef={flipperRef}
+          onFlip={onFlip}
+          onImageFailure={onImageFailure}
         />
       )}
       <div className="audio-controls">

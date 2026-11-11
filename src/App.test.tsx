@@ -126,7 +126,7 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent('1 cards ready.')
+      expect(screen.getByRole('status', { name: /Card \d+ of 1/ })).toBeVisible()
     })
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
@@ -182,7 +182,7 @@ describe('App', () => {
 
     render(<App deckUrl="/lang/english/deck.json" language="english" />)
 
-    expect(await screen.findByText('2 cards ready.')).toBeVisible()
+    expect(await screen.findByRole('status', { name: /Card \d+ of 2/ })).toBeVisible()
     expect(document.querySelector('.card-box')).toBeInTheDocument()
     const image = screen.getByRole('img', { name: 'Picture card' })
     expect(image).toHaveAttribute(
@@ -352,7 +352,7 @@ describe('App', () => {
     completeVisualTransition()
 
     expect(nextButton).toHaveFocus()
-    expect(screen.getByRole('status')).toHaveTextContent('Card 2 of 3, image side.')
+    expect(screen.getByText(/Card 2 of 3, image side\./)).toBeVisible()
     expect(screen.getByRole('img', { name: 'Picture card' })).toHaveAttribute(
       'src',
       expect.stringContaining('/assets/images/mat.png'),
@@ -622,7 +622,7 @@ describe('App', () => {
     render(<App deckUrl="/lang/english/deck.json" language="english" />)
 
     expect(await screen.findByText('Image unavailable')).toBeVisible()
-    expect(screen.getByText('1 cards ready.')).toBeVisible()
+    expect(screen.getByRole('status', { name: /Card \d+ of 1/ })).toBeVisible()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(document.querySelector('.card-box')).toBeInTheDocument()
     expect(errorSpy).toHaveBeenCalledWith('Flashcard image unavailable.', {
@@ -888,7 +888,7 @@ describe('App', () => {
     fireEvent.error(image)
 
     expect(await screen.findByText('Image unavailable')).toBeVisible()
-    expect(screen.getByText('1 cards ready.')).toBeVisible()
+    expect(screen.getByRole('status', { name: /Card \d+ of 1/ })).toBeVisible()
   })
 
   it('flips with one pronunciation per reveal and completes 20 repeated cycles', async () => {

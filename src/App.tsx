@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react'
 import type { Flashcard } from './data/deck'
 import type { LoadedDeck } from './data/loadDeck'
 import CardStage from './components/CardStage'
+import CardProgress from './components/CardProgress'
 import LoadingState from './components/LoadingState'
 import UnavailableState from './components/UnavailableState'
 import { useAudioController } from './hooks/useAudioController'
@@ -173,11 +174,9 @@ function App({ deckUrl, language }: AppProps = {}) {
             onPreviewImageFailure={handlePreviewImageFailure}
             onReplay={replayPronunciation}
           />
-          <p className="load-status" role="status">
-            {state.result.deck.cards.length} cards ready.
-            <span className="visually-hidden">
-              Card {currentIndex + 1} of {cardCount}, {state.face} side.
-            </span>
+          <CardProgress cardCount={cardCount} currentIndex={currentIndex} />
+          <p className="visually-hidden" role="status">
+            Card {currentIndex + 1} of {cardCount}, {state.face} side.
           </p>
         </>
       )}
