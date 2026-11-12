@@ -1,16 +1,22 @@
 import './App.css'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { Flashcard } from './data/deck'
 import type { LoadedDeck } from './data/loadDeck'
+import type { Sticker } from './data/stickers'
+import type { StickerPosition } from './utils/stickerPlacement'
 import CardStage from './components/CardStage'
 import CardProgress from './components/CardProgress'
 import LoadingState from './components/LoadingState'
 import UnavailableState from './components/UnavailableState'
+import StickerBookIndicator from './components/StickerBookIndicator'
 import { useAudioController } from './hooks/useAudioController'
 import { useCardTransition } from './hooks/useCardTransition'
 import { useDeckLoading } from './hooks/useDeckLoading'
 import { usePointerGesture } from './hooks/usePointerGesture'
-import { saveProgress } from './progress/progress'
+import { useStickerCollection } from './hooks/useStickerCollection'
+import { saveProgress, createStickerStorageKey } from './progress/progress'
+import { loadStickerPool, selectRandomSticker } from './data/stickers'
+import { calculateStickerPosition } from './utils/stickerPlacement'
 
 interface AppProps {
   deckUrl?: string
@@ -45,6 +51,10 @@ function App({ deckUrl, language }: AppProps = {}) {
   const [unavailablePreviewIds, setUnavailablePreviewIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   )
+  const [activeSticker, setActiveSticker] = useState<Sticker | null>(null)
+  const [stickerPosition, setStickerPosition] = useState<StickerPosition | null>(null)
+  const [stickerPool, setStickerPool] = useState<Sticker[]>([])
+
   const resetLoadingUi = useCallback(() => {
     setUnavailablePreviewIds(new Set())
   }, [])
@@ -57,6 +67,25 @@ function App({ deckUrl, language }: AppProps = {}) {
     onInitialImageFailure: reportImageFailure,
   })
 
+  // Initialize sticker collection state
+  const stickerStorageKey = state.status === 'ready' && language
+    ? createStickerStorageKey(window.location.search, language)
+    : null
+  
+  const {
+    collectedIds,
+    flipsSinceLastSticker,
+    markStickerCollected,
+    resetFlipsCounter,
+    incrementFlipsCounter,
+    hasAllStickersCollected,
+  } = useStickerCollection(stickerStorageKey)
+
+  // Load sticker pool on app init
+  useEffect(() => {
+    loadStickerPool().then(setStickerPool)
+  }, [])
+
   const toggleFace = useCallback(() => {
     if (state.status !== 'ready' || isTransitionLocked()) return
 
@@ -66,6 +95,8 @@ function App({ deckUrl, language }: AppProps = {}) {
     if (state.face === 'word') {
       saveProgress(state.progressKey, card.card_id, 'image')
       stopAudio()
+      setActiveSticker(null)
+      setStickerPosition(null)
       updateReadyState((current) => ({ ...current, face: 'image' }))
       return
     }
@@ -73,6 +104,41 @@ function App({ deckUrl, language }: AppProps = {}) {
     saveProgress(state.progressKey, card.card_id, 'word')
     updateReadyState((current) => ({ ...current, face: 'word' }))
     playPronunciation(card)
+
+    // Check if we should spawn a sticker (only on word reveal)
+    if (stickerPool.length > 0 && !hasAllStickersCollected(stickerPool.length)) {
+      const allCollected = collectedIds.size >= stickerPool.length
+      if (!allCollected) {
+        const shouldSpawn =
+          flipsSinceLastSticker >= 10 || Math.random() < 0.05
+        
+        if (shouldSpawn) {
+          const selectedSticker = selectRandomSticker(stickerPool, collectedIds)
+          if (selectedSticker) {
+            setActiveSticker(selectedSticker)
+            resetFlipsCounter()
+            
+            // Calculate position after a small delay to ensure DOM is updated
+            setTimeout(() => {
+              const cardElement = document.querySelector('.card-main')
+              const wordElement = document.querySelector('.card-word')
+              const controls = document.querySelectorAll('.audio-replay')
+              
+              if (cardElement instanceof HTMLElement && wordElement instanceof HTMLElement) {
+                const position = calculateStickerPosition(
+                  cardElement,
+                  wordElement,
+                  Array.from(controls).filter((el): el is HTMLElement => el instanceof HTMLElement),
+                )
+                setStickerPosition(position)
+              }
+            }, 50)
+          }
+        } else {
+          incrementFlipsCounter()
+        }
+      }
+    }
   }, [
     beginTransition,
     isTransitionLocked,
@@ -81,6 +147,12 @@ function App({ deckUrl, language }: AppProps = {}) {
     state,
     stopAudio,
     updateReadyState,
+    stickerPool,
+    collectedIds,
+    flipsSinceLastSticker,
+    hasAllStickersCollected,
+    resetFlipsCounter,
+    incrementFlipsCounter,
   ])
 
   const navigate = useCallback((direction: -1 | 1) => {
@@ -95,6 +167,8 @@ function App({ deckUrl, language }: AppProps = {}) {
     beginTransition(direction > 0 ? 'next' : 'previous')
     resetAudio()
     saveProgress(state.progressKey, nextCard.card_id, 'image')
+    setActiveSticker(null)
+    setStickerPosition(null)
     updateReadyState((current) => ({
       ...current,
       currentCard: nextCard,
@@ -148,6 +222,15 @@ function App({ deckUrl, language }: AppProps = {}) {
     if (state.status === 'ready') playPronunciation(state.currentCard)
   }, [playPronunciation, state])
 
+  const handleStickerCollected = useCallback(
+    (stickerId: string) => {
+      markStickerCollected(stickerId)
+      setActiveSticker(null)
+      setStickerPosition(null)
+    },
+    [markStickerCollected],
+  )
+
   return (
     <main aria-busy={state.status === 'loading'}>
       <h1>Flashcards</h1>
@@ -173,8 +256,12 @@ function App({ deckUrl, language }: AppProps = {}) {
             onImageFailure={handleImageFailure}
             onPreviewImageFailure={handlePreviewImageFailure}
             onReplay={replayPronunciation}
+            activeSticker={activeSticker}
+            stickerPosition={stickerPosition}
+            onStickerCollected={handleStickerCollected}
           />
           <CardProgress cardCount={cardCount} currentIndex={currentIndex} />
+          <StickerBookIndicator collectedCount={collectedIds.size} />
           <p className="visually-hidden" role="status">
             Card {currentIndex + 1} of {cardCount}, {state.face} side.
           </p>

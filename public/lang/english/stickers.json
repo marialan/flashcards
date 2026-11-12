@@ -1,0 +1,82 @@
+[
+  {
+    "id": "star-gold",
+    "name": "Gold Star",
+    "imageSrc": "lang/english/stickers/star-gold.png"
+  },
+  {
+    "id": "star-silver",
+    "name": "Silver Star",
+    "imageSrc": "lang/english/stickers/star-silver.png"
+  },
+  {
+    "id": "star-rainbow",
+    "name": "Rainbow Star",
+    "imageSrc": "lang/english/stickers/star-rainbow.png"
+  },
+  {
+    "id": "heart-red",
+    "name": "Red Heart",
+    "imageSrc": "lang/english/stickers/heart-red.png"
+  },
+  {
+    "id": "heart-pink",
+    "name": "Pink Heart",
+    "imageSrc": "lang/english/stickers/heart-pink.png"
+  },
+  {
+    "id": "sun",
+    "name": "Sunny Day",
+    "imageSrc": "lang/english/stickers/sun.png"
+  },
+  {
+    "id": "moon",
+    "name": "Sleepy Moon",
+    "imageSrc": "lang/english/stickers/moon.png"
+  },
+  {
+    "id": "flower",
+    "name": "Pretty Flower",
+    "imageSrc": "lang/english/stickers/flower.png"
+  },
+  {
+    "id": "tree",
+    "name": "Tall Tree",
+    "imageSrc": "lang/english/stickers/tree.png"
+  },
+  {
+    "id": "butterfly",
+    "name": "Flutter Butterfly",
+    "imageSrc": "lang/english/stickers/butterfly.png"
+  },
+  {
+    "id": "rainbow",
+    "name": "Pretty Rainbow",
+    "imageSrc": "lang/english/stickers/rainbow.png"
+  },
+  {
+    "id": "cloud",
+    "name": "Fluffy Cloud",
+    "imageSrc": "lang/english/stickers/cloud.png"
+  },
+  {
+    "id": "sparkle-blue",
+    "name": "Blue Sparkle",
+    "imageSrc": "lang/english/stickers/sparkle-blue.png"
+  },
+  {
+    "id": "sparkle-purple",
+    "name": "Purple Sparkle",
+    "imageSrc": "lang/english/stickers/sparkle-purple.png"
+  },
+  {
+    "id": "crown",
+    "name": "Golden Crown",
+    "imageSrc": "lang/english/stickers/crown.png"
+  },
+  {
+    "id": "book",
+    "name": "Open Book",
+    "imageSrc": "lang/english/stickers/book.png"
+  }
+]

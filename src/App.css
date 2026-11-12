@@ -4,8 +4,9 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  min-height: 100svh;
+  position: relative;
+  width: 100%;
+  height: 100%;
   gap: clamp(0.5rem, 2svh, 0.875rem);
   padding:
     max(1rem, env(safe-area-inset-top))
@@ -13,6 +14,7 @@ main {
     max(1rem, env(safe-area-inset-bottom))
     max(1rem, env(safe-area-inset-left));
   text-align: center;
+  overflow: hidden;
 }
 
 h1 {

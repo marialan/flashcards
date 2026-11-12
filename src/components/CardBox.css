@@ -9,6 +9,7 @@
   min-height: 9rem;
   place-items: center;
   overflow: visible;
+  position: relative;
   border: 0;
   border-radius: 1.5rem;
   background: transparent;

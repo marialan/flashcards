@@ -3,7 +3,12 @@ import {
   createProgressStorageKey,
   readSavedProgress,
   saveProgress,
+  createStickerStorageKey,
+  readStickerCollection,
+  saveStickerCollection,
+  discardStickerCollection,
 } from './progress'
+import type { SavedStickerCollection } from './progress'
 
 describe('learner progress', () => {
   afterEach(() => {
@@ -87,5 +92,112 @@ describe('learner progress', () => {
       'Learner progress could not be restored or saved.',
       { category: 'storage_unavailable' },
     )
+  })
+})
+
+describe('sticker collection persistence', () => {
+  afterEach(() => {
+    localStorage.clear()
+    vi.restoreAllMocks()
+    window.history.replaceState(null, '', '/')
+  })
+
+  describe('createStickerStorageKey', () => {
+    it('creates a storage key with valid parameters', () => {
+      const key = createStickerStorageKey('?cr_user_id=user123&cr_lang=english', 'english')
+      expect(key).toContain('flashcards:stickers:v1')
+      expect(key).toContain('english')
+      expect(key).toContain('user123')
+    })
+
+    it('returns null if language is missing', () => {
+      const key = createStickerStorageKey('?cr_user_id=user123', 'english')
+      expect(key).toBeNull()
+    })
+
+    it('returns null if user id is missing', () => {
+      const key = createStickerStorageKey('?cr_lang=english', 'english')
+      expect(key).toBeNull()
+    })
+
+    it('returns null if languages do not match', () => {
+      const key = createStickerStorageKey('?cr_user_id=user123&cr_lang=french', 'english')
+      expect(key).toBeNull()
+    })
+  })
+
+  describe('saveStickerCollection', () => {
+    it('saves collection to localStorage', () => {
+      const key = 'test-key'
+      const collectedIds = ['sticker-1', 'sticker-2']
+      const flipsSince = 3
+
+      saveStickerCollection(key, collectedIds, flipsSince)
+
+      const saved = localStorage.getItem(key)
+      expect(saved).toBeDefined()
+
+      const parsed = JSON.parse(saved!) as SavedStickerCollection
+      expect(parsed.schema_version).toBe(1)
+      expect(parsed.collectedStickerIds).toEqual(collectedIds)
+      expect(parsed.flipsSinceLastSticker).toBe(flipsSince)
+    })
+
+    it('does nothing if key is null', () => {
+      saveStickerCollection(null, ['sticker-1'], 0)
+      expect(localStorage.length).toBe(0)
+    })
+  })
+
+  describe('readStickerCollection', () => {
+    it('reads valid collection from localStorage', () => {
+      const key = 'test-key'
+      const collection: SavedStickerCollection = {
+        schema_version: 1,
+        collectedStickerIds: ['sticker-1', 'sticker-2'],
+        flipsSinceLastSticker: 5,
+      }
+      localStorage.setItem(key, JSON.stringify(collection))
+
+      const read = readStickerCollection(key)
+      expect(read).toEqual(collection)
+    })
+
+    it('returns null if key does not exist', () => {
+      const read = readStickerCollection('nonexistent')
+      expect(read).toBeNull()
+    })
+
+    it('returns null and discards invalid JSON', () => {
+      const key = 'test-key'
+      const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      localStorage.setItem(key, 'invalid json')
+
+      const read = readStickerCollection(key)
+      expect(read).toBeNull()
+      expect(localStorage.getItem(key)).toBeNull()
+      expect(warning).toHaveBeenCalled()
+    })
+
+    it('returns null and discards invalid schema', () => {
+      const key = 'test-key'
+      const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      localStorage.setItem(key, JSON.stringify({ wrong: 'schema' }))
+
+      const read = readStickerCollection(key)
+      expect(read).toBeNull()
+      expect(localStorage.getItem(key)).toBeNull()
+      expect(warning).toHaveBeenCalled()
+    })
+  })
+
+  describe('discardStickerCollection', () => {
+    it('removes collection from localStorage', () => {
+      const key = 'test-key'
+      localStorage.setItem(key, '{}')
+
+      discardStickerCollection(key)
+      expect(localStorage.getItem(key)).toBeNull()
+    })
   })
 })

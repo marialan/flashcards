@@ -3,6 +3,8 @@ import type { Ref } from 'react'
 import type { Flashcard } from '../data/deck'
 import type { CardTransition } from '../hooks/useCardTransition'
 import type { usePointerGesture } from '../hooks/usePointerGesture'
+import type { Sticker } from '../data/stickers'
+import type { StickerPosition } from '../utils/stickerPlacement'
 import CardBox from './CardBox'
 import CardPreview from './CardPreview'
 
@@ -27,6 +29,9 @@ interface CardStageProps {
   onImageFailure: (card: Flashcard) => void
   onPreviewImageFailure: (cardId: string) => void
   onReplay: () => void
+  activeSticker?: Sticker | null
+  stickerPosition?: StickerPosition | null
+  onStickerCollected?: (stickerId: string) => void
 }
 
 function CardStage({
@@ -47,6 +52,9 @@ function CardStage({
   onImageFailure,
   onPreviewImageFailure,
   onReplay,
+  activeSticker,
+  stickerPosition,
+  onStickerCollected,
 }: CardStageProps) {
   return (
     <div
@@ -79,6 +87,9 @@ function CardStage({
             flipperRef={flipperRef}
             onFlip={onFlip}
             onImageFailure={onImageFailure}
+            activeSticker={activeSticker}
+            stickerPosition={stickerPosition}
+            onStickerCollected={onStickerCollected}
           />
           {nextCard && (
             <CardPreview
@@ -101,6 +112,9 @@ function CardStage({
           flipperRef={flipperRef}
           onFlip={onFlip}
           onImageFailure={onImageFailure}
+          activeSticker={activeSticker}
+          stickerPosition={stickerPosition}
+          onStickerCollected={onStickerCollected}
         />
       )}
       <div className="audio-controls">
